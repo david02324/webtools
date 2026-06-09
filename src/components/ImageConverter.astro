@@ -18,6 +18,8 @@ const i18n = {
   converting: c.converting,
   download: c.download,
   downloadAll: c.downloadAll('{n}'),
+  delete: c.delete,
+  clearAllConfirm: c.clearAllConfirm,
   failed: c.failed,
   close: c.close,
   info: c.info,
@@ -48,7 +50,10 @@ const i18n = {
   <div class="controls">
     <label for="quality">{c.quality} <strong id="quality-val">{tool.defaultQuality}</strong></label>
     <input type="range" id="quality" min="1" max="100" value={tool.defaultQuality} />
-    <button type="button" class="download-all" id="download-all" hidden></button>
+    <div class="actions">
+      <button type="button" class="download-all" id="download-all" hidden></button>
+      <button type="button" class="clear-all" id="clear-all" hidden>{c.clearAll}</button>
+    </div>
   </div>
 
   <div class="gallery" id="results"></div>
@@ -103,13 +108,14 @@ const i18n = {
   .dz-sub { color: var(--muted); font-size: 0.85rem; }
 
   /* 컨트롤 바 */
-  .controls { display: flex; align-items: center; gap: 0.85rem; margin: 1.35rem 0; }
+  .controls { display: flex; align-items: center; gap: 0.85rem; margin: 1.35rem 0; flex-wrap: wrap; }
   .controls > label { font-size: 0.9rem; white-space: nowrap; }
   .controls > label strong {
     font-variant-numeric: tabular-nums;
     display: inline-block; min-width: 2.2ch; text-align: right; color: var(--accent);
   }
-  .controls input[type='range'] { flex: 1; accent-color: var(--accent); }
+  .controls input[type='range'] { flex: 1; min-width: 140px; accent-color: var(--accent); }
+  .actions { display: flex; gap: 0.5rem; }
   .download-all {
     white-space: nowrap; cursor: pointer; font: inherit; font-size: 0.85rem; font-weight: 600;
     color: #0b0d11; border: 0; border-radius: 9px; padding: 0.5rem 0.95rem;
@@ -119,6 +125,13 @@ const i18n = {
   }
   .download-all:hover { filter: brightness(1.06); }
   .download-all:active { transform: translateY(1px); }
+  .clear-all {
+    white-space: nowrap; cursor: pointer; font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 9px;
+    padding: 0.5rem 0.85rem; transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .clear-all:hover { color: #ff8a8a; border-color: #5a2a2a; background: rgba(232, 90, 90, 0.1); }
+  .clear-all:active { transform: translateY(1px); }
 
   /* 갤러리 격자 */
   .gallery {
@@ -315,10 +328,19 @@ const i18n = {
   .converter .badge.save.neg { color: #ffc9c9; background: rgba(232, 90, 90, 0.24); }
 
   .converter figcaption.cap { display: flex; flex-direction: column; gap: 0.28rem; padding: 0.6rem 0.7rem 0.7rem; }
+  .converter .cap-row { display: flex; align-items: center; gap: 0.4rem; }
   .converter .cap .name {
+    flex: 1; min-width: 0;
     font-size: 0.84rem; font-weight: 500;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  .converter .del {
+    flex: none; display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+    color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 7px;
+    cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .converter .del:hover { color: #ff8a8a; border-color: #5a2a2a; background: rgba(232, 90, 90, 0.12); }
+  .converter .del svg { width: 14px; height: 14px; }
   .converter .cap .meta {
     color: var(--muted); font-size: 0.74rem;
     font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
@@ -345,12 +367,15 @@ const i18n = {
 <script>
   import { convertImage } from '../lib/convert';
   import { makeZip, type ZipEntry } from '../lib/zip';
+  import { addImage, getImages, deleteImage, clearImages } from '../lib/store';
   import type { TargetFormat } from '../lib/formats';
 
   interface I18n {
     converting: string;
     download: string;
     downloadAll: string;
+    delete: string;
+    clearAllConfirm: string;
     failed: string;
     close: string;
     info: {
@@ -364,6 +389,7 @@ const i18n = {
   }
 
   interface Item {
+    id: number;
     name: string;
     url: string;
     blob: Blob;
@@ -387,9 +413,14 @@ const i18n = {
   const qualityVal = root.querySelector<HTMLElement>('#quality-val')!;
   const results = root.querySelector<HTMLElement>('#results')!;
   const downloadAllBtn = root.querySelector<HTMLButtonElement>('#download-all')!;
+  const clearAllBtn = root.querySelector<HTMLButtonElement>('#clear-all')!;
 
   let quality = Number(root.dataset.quality);
-  const items: Item[] = [];
+  // id → Item. id 는 IndexedDB 가 부여한 키. 저장 실패 시 음수 임시 id 를 쓴다.
+  const items = new Map<number, Item>();
+  let memoryId = -1;
+
+  const TRASH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>`;
 
   qualityInput.addEventListener('input', () => {
     quality = Number(qualityInput.value);
@@ -406,13 +437,32 @@ const i18n = {
     return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   }
 
-  function refreshDownloadAll() {
-    if (items.length >= 2) {
-      downloadAllBtn.hidden = false;
-      downloadAllBtn.textContent = T.downloadAll.replace('{n}', String(items.length));
-    } else {
-      downloadAllBtn.hidden = true;
+  function refreshToolbar() {
+    downloadAllBtn.hidden = items.size < 2;
+    if (!downloadAllBtn.hidden) {
+      downloadAllBtn.textContent = T.downloadAll.replace('{n}', String(items.size));
     }
+    clearAllBtn.hidden = items.size < 1;
+  }
+
+  // 완성된 카드의 내부 HTML — 라이브 변환과 복원이 함께 쓴다.
+  function cardHTML(item: Item): string {
+    const safe = esc(item.name);
+    const sign = item.saved >= 0 ? '−' : '+';
+    const cls = item.saved >= 0 ? 'pos' : 'neg';
+    return `
+      <button type="button" class="thumb" data-id="${item.id}" aria-label="${safe}">
+        <span class="badge fmt">${item.format.toUpperCase()}</span>
+        <span class="badge save ${cls}">${sign}${Math.abs(item.saved)}%</span>
+        <img src="${item.url}" alt="${safe}" loading="lazy" />
+      </button>
+      <figcaption class="cap">
+        <div class="cap-row">
+          <span class="name">${safe}</span>
+          <button type="button" class="del" data-id="${item.id}" aria-label="${T.delete}" title="${T.delete}">${TRASH}</button>
+        </div>
+        <span class="meta">${item.width}×${item.height} · ${fmtBytes(item.blob.size)}</span>
+      </figcaption>`;
   }
 
   async function handleFiles(files: FileList | File[]) {
@@ -433,29 +483,25 @@ const i18n = {
       try {
         const usedQuality = quality;
         const { blob, width, height } = await convertImage(file, format, usedQuality, mime);
-        const url = URL.createObjectURL(blob);
         const saved = file.size > 0 ? Math.round((1 - blob.size / file.size) * 100) : 0;
-        const sign = saved >= 0 ? '−' : '+';
-        const cls = saved >= 0 ? 'pos' : 'neg';
 
-        const item: Item = {
-          name: fname, url, blob, width, height,
-          origSize: file.size, saved, quality: usedQuality, format,
+        // 브라우저에 영구 저장(실패해도 세션 내에선 동작하도록 음수 id 폴백).
+        const rec = {
+          format, name: fname, blob, width, height,
+          origSize: file.size, saved, quality: usedQuality, createdAt: Date.now(),
         };
-        const idx = items.push(item) - 1;
-        card.dataset.idx = String(idx);
+        let id: number;
+        try {
+          id = await addImage(rec);
+        } catch {
+          id = memoryId--;
+        }
 
-        card.innerHTML = `
-          <button type="button" class="thumb" data-idx="${idx}" aria-label="${safe}">
-            <span class="badge fmt">${format.toUpperCase()}</span>
-            <span class="badge save ${cls}">${sign}${Math.abs(saved)}%</span>
-            <img src="${url}" alt="${safe}" loading="lazy" />
-          </button>
-          <figcaption class="cap">
-            <span class="name">${safe}</span>
-            <span class="meta">${width}×${height} · ${fmtBytes(blob.size)}</span>
-          </figcaption>`;
-        refreshDownloadAll();
+        const item: Item = { id, url: URL.createObjectURL(blob), ...rec };
+        items.set(id, item);
+        card.dataset.id = String(id);
+        card.innerHTML = cardHTML(item);
+        refreshToolbar();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         card.innerHTML = `
@@ -463,6 +509,44 @@ const i18n = {
           <figcaption class="cap"><span class="name">${safe}</span></figcaption>`;
       }
     }
+  }
+
+  // 저장된 결과를 페이지 진입 시 복원(최신순으로 위에 쌓음).
+  async function restore() {
+    let stored;
+    try {
+      stored = await getImages(format);
+    } catch {
+      return;
+    }
+    stored.sort((a, b) => b.createdAt - a.createdAt);
+    for (const s of stored) {
+      if (s.id == null) continue;
+      const item: Item = {
+        id: s.id, name: s.name, url: URL.createObjectURL(s.blob), blob: s.blob,
+        width: s.width, height: s.height, origSize: s.origSize,
+        saved: s.saved, quality: s.quality, format: s.format,
+      };
+      items.set(item.id, item);
+      const card = document.createElement('figure');
+      card.className = 'card';
+      card.dataset.id = String(item.id);
+      card.innerHTML = cardHTML(item);
+      results.append(card);
+    }
+    refreshToolbar();
+  }
+
+  // 카드 한 장 제거(저장소 + 메모리 + DOM).
+  async function removeItem(id: number, card: HTMLElement) {
+    const item = items.get(id);
+    if (item) URL.revokeObjectURL(item.url);
+    items.delete(id);
+    card.remove();
+    if (id >= 0) {
+      try { await deleteImage(id); } catch { /* 무시 */ }
+    }
+    refreshToolbar();
   }
 
   // ── 라이트박스 ─────────────────────────────────────────────
@@ -500,11 +584,19 @@ const i18n = {
     document.body.style.overflow = '';
   }
 
-  // 썸네일 클릭(위임) → 라이트박스
+  // 결과 영역 클릭(위임) — 삭제 버튼 우선, 아니면 썸네일 → 라이트박스.
   results.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLElement>('.thumb[data-idx]');
-    if (!btn) return;
-    const item = items[Number(btn.dataset.idx)];
+    const target = e.target as HTMLElement;
+    const del = target.closest<HTMLElement>('.del[data-id]');
+    if (del) {
+      e.stopPropagation();
+      const card = del.closest<HTMLElement>('.card');
+      if (card) removeItem(Number(del.dataset.id), card);
+      return;
+    }
+    const thumb = target.closest<HTMLElement>('.thumb[data-id]');
+    if (!thumb) return;
+    const item = items.get(Number(thumb.dataset.id));
     if (item) openLightbox(item);
   });
 
@@ -514,11 +606,22 @@ const i18n = {
     if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
   });
 
+  // ── 전체 삭제 ──────────────────────────────────────────────
+  clearAllBtn.addEventListener('click', async () => {
+    if (!items.size) return;
+    if (!confirm(T.clearAllConfirm)) return;
+    for (const item of items.values()) URL.revokeObjectURL(item.url);
+    items.clear();
+    results.innerHTML = '';
+    refreshToolbar();
+    try { await clearImages(format); } catch { /* 무시 */ }
+  });
+
   // ── 전체 다운로드(ZIP) ─────────────────────────────────────
   downloadAllBtn.addEventListener('click', async () => {
     const used = new Set<string>();
     const entries: ZipEntry[] = [];
-    for (const item of items) {
+    for (const item of items.values()) {
       let name = item.name;
       if (used.has(name)) {
         const dot = name.lastIndexOf('.');
@@ -559,4 +662,7 @@ const i18n = {
     const dt = (e as DragEvent).dataTransfer;
     if (dt?.files) handleFiles(dt.files);
   });
+
+  // 페이지 진입 시 저장된 변환 결과 복원.
+  restore();
 </script>
