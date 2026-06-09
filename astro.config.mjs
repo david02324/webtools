@@ -1,12 +1,12 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
-// GitHub Pages 프로젝트 페이지 배포 기준.
-// username.github.io/webtools/  형태이므로 base 를 저장소 이름으로 맞춘다.
-// 사용자 계정 확정되면 site 의 username 부분만 수정하면 됨.
+// 커스텀 도메인(fastwebtools.app) 루트 배포 기준.
+// GitHub Pages 에 CNAME(public/CNAME) 으로 도메인을 붙이면 루트에서 서빙되므로
+// base 는 '/' 로 둔다.
 export default defineConfig({
-  site: 'https://david02324.github.io',
-  base: '/webtools/',
+  site: 'https://fastwebtools.app',
+  base: '/',
   trailingSlash: 'ignore',
   // 노출 기본 언어는 영어. 라우트는 src/pages 디렉터리 구조로 직접 만든다
   //  (en=루트, 그 외=/<locale>/ 접두사). 이 설정은 Astro 의 로케일 인식용.

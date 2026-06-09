@@ -38,3 +38,6 @@ export const TOOL_LIST: ToolConfig[] = Object.values(TOOLS);
 
 /** 이미지 분석기 페이지의 URL 슬러그. 변환기와 별개의 단독 페이지. */
 export const ANALYZE_SLUG = 'analyze-image';
+
+/** 동영상 구간 → 애니메이션 WebP 도구의 URL 슬러그. 단독 페이지. */
+export const VIDEO_TO_WEBP_SLUG = 'video-to-webp';

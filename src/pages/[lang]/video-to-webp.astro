@@ -1,0 +1,17 @@
+---
+// 비기본 로케일 동영상 → 애니메이션 WebP 페이지 — /webtools/ko/video-to-webp 등.
+import VideoToWebpView from '../../components/VideoToWebpView.astro';
+import { LOCALES, DEFAULT_LOCALE, type Locale } from '../../i18n/config';
+
+export function getStaticPaths() {
+  return LOCALES.filter((l) => l !== DEFAULT_LOCALE).map((lang) => ({
+    params: { lang },
+    props: { lang },
+  }));
+}
+
+interface Props { lang: Locale; }
+const { lang } = Astro.props;
+---
+
+<VideoToWebpView locale={lang} />
