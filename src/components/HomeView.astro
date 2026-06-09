@@ -1,10 +1,10 @@
 ---
 // 홈 화면 본문 — 로케일만 받아 기본/언어별 페이지에서 함께 재사용한다.
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { TOOL_LIST } from '../lib/formats';
+import { TOOL_LIST, ANALYZE_SLUG } from '../lib/formats';
 import { localizedPath, type Locale } from '../i18n/config';
 import { UI } from '../i18n/ui';
-import { HOME_COPY, TOOL_COPY } from '../i18n/content';
+import { HOME_COPY, TOOL_COPY, ANALYZER_COPY } from '../i18n/content';
 
 interface Props { locale: Locale; }
 const { locale } = Astro.props;
@@ -18,6 +18,20 @@ const base = import.meta.env.BASE_URL;
   <p class="lede">{t.home.lede}</p>
 
   <ul class="tools">
+    <li>
+      <a class="featured" href={localizedPath(base, locale, ANALYZE_SLUG)}>
+        <span class="title">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+          </span>
+          {t.home.analyzerCard}
+        </span>
+        <span class="desc">{ANALYZER_COPY[locale].tagline}</span>
+      </a>
+    </li>
     {
       TOOL_LIST.map((tool) => (
         <li>
@@ -40,7 +54,21 @@ const base = import.meta.env.BASE_URL;
       text-decoration: none; color: var(--fg); transition: border-color 0.15s;
     }
     .tools a:hover { border-color: var(--accent); }
-    .tools .title { font-weight: 600; }
+    .tools .title { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
     .tools .desc { color: var(--muted); font-size: 0.9rem; }
+
+    /* 분석기 카드 — 목록 최상단의 대표 도구라 살짝 강조한다. */
+    .tools a.featured {
+      background:
+        radial-gradient(130% 130% at 0% 0%, rgba(110, 168, 254, 0.1), transparent 55%),
+        var(--card);
+      border-color: #34405a;
+    }
+    .tools a.featured:hover { border-color: var(--accent); }
+    .tools .ico {
+      display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
+      color: var(--accent); background: rgba(110, 168, 254, 0.12);
+    }
+    .tools .ico svg { width: 16px; height: 16px; }
   </style>
 </BaseLayout>

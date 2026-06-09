@@ -40,6 +40,34 @@ export const HOME_COPY: Record<Locale, HomeCopy> = {
   },
 };
 
+// 이미지 분석기 페이지의 SEO 텍스트(로케일별).
+export const ANALYZER_COPY: Record<Locale, ToolCopy> = {
+  en: {
+    title: 'Image Analyzer — Inspect Dimensions, Size & EXIF | WebTools',
+    description:
+      'Analyze any image right in your browser: dimensions, file size, format, color type and full EXIF metadata (camera, lens, GPS). No uploads — then convert to WebP or AVIF in one click.',
+    tagline: 'Inspect any image — size, format, metadata — then convert in one click. No uploads.',
+  },
+  ko: {
+    title: '이미지 분석기 — 크기·용량·EXIF 상세 분석 | WebTools',
+    description:
+      '어떤 이미지든 브라우저에서 바로 분석합니다. 크기·용량·포맷·색상 유형은 물론 EXIF 메타데이터(카메라·렌즈·GPS)까지. 업로드 없이 분석하고 바로 WebP·AVIF 로 변환하세요.',
+    tagline: '어떤 이미지든 크기·포맷·메타데이터를 분석하고 바로 변환. 업로드 없음.',
+  },
+  zh: {
+    title: '图片分析器 — 查看尺寸、大小与 EXIF | WebTools',
+    description:
+      '在浏览器中直接分析任意图片：尺寸、文件大小、格式、颜色类型，以及完整的 EXIF 元数据（相机、镜头、GPS）。无需上传，并可一键转换为 WebP 或 AVIF。',
+    tagline: '分析任意图片的尺寸、格式与元数据，并可一键转换。无需上传。',
+  },
+  ja: {
+    title: '画像アナライザー — サイズ・容量・EXIF を解析 | WebTools',
+    description:
+      'あらゆる画像をブラウザ内で解析：サイズ・容量・形式・カラータイプに加え、EXIF メタデータ（カメラ・レンズ・GPS）まで。アップロード不要、そのまま WebP・AVIF に一括変換。',
+    tagline: 'あらゆる画像のサイズ・形式・メタデータを解析し、そのまま変換。アップロード不要。',
+  },
+};
+
 export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
   en: {
     webp: {

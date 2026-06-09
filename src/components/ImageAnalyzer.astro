@@ -1,0 +1,288 @@
+---
+// 이미지 분석기 — 한 장을 넣으면 이름·크기·용량·포맷·EXIF 등을 상세히 보여준다.
+// 분석 결과 패널의 "WebP/AVIF 로 변환" 버튼을 누르면 그 파일을 인계 보관소에 담고
+// 해당 변환기 페이지로 이동한다(변환기는 진입 시 자동으로 변환).
+import { TOOLS } from '../lib/formats';
+import { localizedPath, type Locale } from '../i18n/config';
+import { UI } from '../i18n/ui';
+
+interface Props { locale: Locale; }
+const { locale } = Astro.props;
+const a = UI[locale].analyzer;
+const base = import.meta.env.BASE_URL;
+
+const webpHref = localizedPath(base, locale, TOOLS.webp.slug);
+const avifHref = localizedPath(base, locale, TOOLS.avif.slug);
+
+// 클라이언트 스크립트로 넘길 문자열만 직렬화(함수 제외).
+const i18n = {
+  analyzing: a.analyzing,
+  noExif: a.noExif,
+  viewOnMap: a.viewOnMap,
+  failed: a.failed,
+  groups: a.groups,
+  fields: a.fields,
+};
+---
+
+<section class="analyzer" data-webp-href={webpHref} data-avif-href={avifHref}>
+  <script type="application/json" class="az-i18n" is:inline set:html={JSON.stringify(i18n)} />
+
+  <label class="dropzone" id="az-drop">
+    <input type="file" id="az-input" accept="image/*" hidden />
+    <span class="dz-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15l-5-5L5 21" />
+        <path d="M3 5h18v14H3z" />
+        <circle cx="8.5" cy="9.5" r="1.5" />
+      </svg>
+    </span>
+    <span class="dz-text">{a.dropText}</span>
+    <span class="dz-sub">{a.dropSub}</span>
+  </label>
+
+  <div class="az-result" id="az-result" hidden>
+    <div class="az-grid">
+      <div class="az-left">
+        <div class="az-preview"><img id="az-img" alt="" /></div>
+        <div class="az-convert">
+          <button type="button" class="az-btn webp" id="az-to-webp">{a.convertTo('WebP')}</button>
+          <button type="button" class="az-btn avif" id="az-to-avif">{a.convertTo('AVIF')}</button>
+        </div>
+        <button type="button" class="az-reset" id="az-reset">{a.another}</button>
+      </div>
+      <div class="az-right" id="az-groups"></div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .analyzer { margin: 1.5rem 0 2.5rem; }
+
+  /* 드롭존(변환기와 시각 언어 공유) */
+  .dropzone {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.5rem; padding: 2.5rem 1rem; text-align: center; cursor: pointer;
+    border: 1.5px dashed var(--border); border-radius: 16px;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(110, 168, 254, 0.06), transparent 60%),
+      var(--card);
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  }
+  .dropzone:hover { border-color: #3a4350; }
+  .dropzone.drag {
+    border-color: var(--accent); border-style: solid;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(110, 168, 254, 0.16), transparent 60%),
+      var(--card);
+    transform: scale(1.005);
+  }
+  .dz-icon {
+    display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+    color: var(--accent); background: rgba(110, 168, 254, 0.1);
+  }
+  .dz-icon svg { width: 24px; height: 24px; }
+  .dz-text { font-weight: 600; }
+  .dz-sub { color: var(--muted); font-size: 0.85rem; }
+
+  /* 결과 패널 */
+  .az-result[hidden] { display: none; }
+  .az-grid {
+    display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 1.25rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.1rem; animation: az-in 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes az-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .az-left { display: flex; flex-direction: column; gap: 0.7rem; }
+  .az-preview {
+    display: grid; place-items: center; aspect-ratio: 1 / 1; overflow: hidden;
+    border-radius: 12px; background-color: #0b0d11;
+    background-image:
+      linear-gradient(45deg, #15181e 25%, transparent 25%),
+      linear-gradient(-45deg, #15181e 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #15181e 75%),
+      linear-gradient(-45deg, transparent 75%, #15181e 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  }
+  .az-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+  .az-convert { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .az-btn {
+    cursor: pointer; font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: #0b0d11; border: 0; border-radius: 9px; padding: 0.55rem 0.5rem;
+    background: linear-gradient(180deg, #8ab9ff, var(--accent));
+    box-shadow: 0 2px 10px rgba(110, 168, 254, 0.22);
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .az-btn.avif { background: linear-gradient(180deg, #b59cff, #7c5cff); box-shadow: 0 2px 10px rgba(124, 92, 255, 0.22); }
+  .az-btn:hover { filter: brightness(1.06); }
+  .az-btn:active { transform: translateY(1px); }
+  .az-reset {
+    cursor: pointer; font: inherit; font-size: 0.82rem; font-weight: 600;
+    color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 9px;
+    padding: 0.45rem 0.5rem; transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .az-reset:hover { color: var(--fg); border-color: #3d4756; }
+
+  @media (max-width: 560px) {
+    .az-grid { grid-template-columns: 1fr; }
+    .az-preview { aspect-ratio: 16 / 10; }
+  }
+</style>
+
+<!--
+  결과 그룹(dl/dt/dd)은 클라이언트 스크립트가 innerHTML 로 생성하므로
+  Astro 스코프 스타일이 붙지 않는다. 해당 규칙만 전역으로 두되 .analyzer 로 네임스페이스.
+-->
+<style is:global>
+  .analyzer .az-right { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .analyzer .az-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .analyzer .az-group h4 {
+    margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .analyzer .az-stats {
+    margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.4rem 1rem;
+  }
+  .analyzer .az-stats dt { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+  .analyzer .az-stats dd {
+    margin: 0; text-align: right; font-size: 0.82rem; word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .analyzer .az-map {
+    font-size: 0.8rem; align-self: flex-start; margin-top: 0.1rem;
+  }
+  .analyzer .az-noexif { color: var(--muted); font-size: 0.82rem; margin: 0; }
+  .analyzer .az-err { color: #ff7a7a; font-size: 0.9rem; }
+</style>
+
+<script>
+  import { analyzeImage, type ImageAnalysis } from '../lib/analyze';
+  import { setPending } from '../lib/handoff';
+
+  interface I18n {
+    analyzing: string;
+    noExif: string;
+    viewOnMap: string;
+    failed: string;
+    groups: Record<string, string>;
+    fields: Record<string, string>;
+  }
+
+  const root = document.querySelector<HTMLElement>('.analyzer')!;
+  const T = JSON.parse(root.querySelector<HTMLElement>('.az-i18n')!.textContent!) as I18n;
+  const webpHref = root.dataset.webpHref!;
+  const avifHref = root.dataset.avifHref!;
+
+  const input = root.querySelector<HTMLInputElement>('#az-input')!;
+  const dropzone = root.querySelector<HTMLElement>('#az-drop')!;
+  const result = root.querySelector<HTMLElement>('#az-result')!;
+  const img = root.querySelector<HTMLImageElement>('#az-img')!;
+  const groupsEl = root.querySelector<HTMLElement>('#az-groups')!;
+  const toWebp = root.querySelector<HTMLButtonElement>('#az-to-webp')!;
+  const toAvif = root.querySelector<HTMLButtonElement>('#az-to-avif')!;
+  const resetBtn = root.querySelector<HTMLButtonElement>('#az-reset')!;
+
+  // 현재 분석 중인 파일(변환 버튼이 인계). 미리보기 URL 은 교체/초기화 때 정리.
+  let current: File | null = null;
+  let previewUrl: string | null = null;
+
+  function esc(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function renderGroups(report: ImageAnalysis) {
+    let html = '';
+    for (const g of report.groups) {
+      const rows = g.fields
+        .map((f) => `<dt>${esc(T.fields[f.key] ?? f.key)}</dt><dd>${esc(f.value)}</dd>`)
+        .join('');
+      html += `<div class="az-group"><h4>${esc(T.groups[g.id] ?? g.id)}</h4><dl class="az-stats">${rows}</dl>`;
+      if (g.id === 'gps' && report.gps) {
+        const url = `https://www.google.com/maps?q=${report.gps.lat},${report.gps.lon}`;
+        html += `<a class="az-map" href="${url}" target="_blank" rel="noopener">${esc(T.viewOnMap)} ↗</a>`;
+      }
+      html += `</div>`;
+    }
+    // EXIF 가 전혀 없으면 안내 한 줄.
+    if (!report.groups.some((g) => g.id === 'exif')) {
+      html += `<p class="az-noexif">${esc(T.noExif)}</p>`;
+    }
+    groupsEl.innerHTML = html;
+  }
+
+  async function analyze(file: File) {
+    if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|avif|bmp|tiff?|heic|ico|svg)$/i.test(file.name))
+      return;
+
+    current = file;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(file);
+    img.src = previewUrl;
+    img.alt = file.name;
+
+    groupsEl.innerHTML = `<p class="az-noexif">${esc(T.analyzing)}</p>`;
+    result.hidden = false;
+
+    try {
+      const report = await analyzeImage(file);
+      renderGroups(report);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      groupsEl.innerHTML = `<p class="az-err">${esc(T.failed)}: ${esc(msg)}</p>`;
+    }
+  }
+
+  function reset() {
+    current = null;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+    img.removeAttribute('src');
+    result.hidden = true;
+    groupsEl.innerHTML = '';
+    input.value = '';
+  }
+
+  // 변환 버튼 — 현재 파일을 인계 보관소에 담고 변환기로 이동.
+  async function handoffTo(href: string) {
+    if (!current) return;
+    try {
+      await setPending(current, Date.now());
+    } catch {
+      /* 저장 실패해도 이동은 한다(자동 변환만 생략됨) */
+    }
+    location.href = href;
+  }
+
+  toWebp.addEventListener('click', () => handoffTo(webpHref));
+  toAvif.addEventListener('click', () => handoffTo(avifHref));
+  resetBtn.addEventListener('click', reset);
+
+  input.addEventListener('change', () => {
+    const f = input.files?.[0];
+    if (f) analyze(f);
+  });
+
+  ['dragenter', 'dragover'].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag');
+    }),
+  );
+  ['dragleave', 'drop'].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+    }),
+  );
+  dropzone.addEventListener('drop', (e) => {
+    const f = (e as DragEvent).dataTransfer?.files?.[0];
+    if (f) analyze(f);
+  });
+</script>

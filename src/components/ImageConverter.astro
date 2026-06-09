@@ -368,6 +368,7 @@ const i18n = {
   import { convertImage } from '../lib/convert';
   import { makeZip, type ZipEntry } from '../lib/zip';
   import { addImage, getImages, deleteImage, clearImages } from '../lib/store';
+  import { takePending } from '../lib/handoff';
   import type { TargetFormat } from '../lib/formats';
 
   interface I18n {
@@ -663,6 +664,20 @@ const i18n = {
     if (dt?.files) handleFiles(dt.files);
   });
 
-  // 페이지 진입 시 저장된 변환 결과 복원.
+  // 분석기에서 넘어온 인계 이미지가 있으면 즉시 자동 변환(일회용).
+  async function consumeHandoff() {
+    let pending;
+    try {
+      pending = await takePending(Date.now());
+    } catch {
+      return;
+    }
+    if (!pending) return;
+    const file = new File([pending.blob], pending.name, { type: pending.type || mime });
+    await handleFiles([file]);
+  }
+
+  // 페이지 진입 시 저장된 변환 결과 복원 후, 인계 이미지 자동 변환.
   restore();
+  consumeHandoff();
 </script>
