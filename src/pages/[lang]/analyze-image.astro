@@ -1,0 +1,17 @@
+---
+// 비기본 로케일 이미지 분석기 페이지 — /webtools/ko/analyze-image 등.
+import AnalyzerView from '../../components/AnalyzerView.astro';
+import { LOCALES, DEFAULT_LOCALE, type Locale } from '../../i18n/config';
+
+export function getStaticPaths() {
+  return LOCALES.filter((l) => l !== DEFAULT_LOCALE).map((lang) => ({
+    params: { lang },
+    props: { lang },
+  }));
+}
+
+interface Props { lang: Locale; }
+const { lang } = Astro.props;
+---
+
+<AnalyzerView locale={lang} />

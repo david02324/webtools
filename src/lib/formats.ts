@@ -35,3 +35,6 @@ export const TOOLS: Record<TargetFormat, ToolConfig> = {
 };
 
 export const TOOL_LIST: ToolConfig[] = Object.values(TOOLS);
+
+/** 이미지 분석기 페이지의 URL 슬러그. 변환기와 별개의 단독 페이지. */
+export const ANALYZE_SLUG = 'analyze-image';
