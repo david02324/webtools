@@ -1,0 +1,46 @@
+---
+// 홈 화면 본문 — 로케일만 받아 기본/언어별 페이지에서 함께 재사용한다.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { TOOL_LIST } from '../lib/formats';
+import { localizedPath, type Locale } from '../i18n/config';
+import { UI } from '../i18n/ui';
+import { HOME_COPY, TOOL_COPY } from '../i18n/content';
+
+interface Props { locale: Locale; }
+const { locale } = Astro.props;
+const t = UI[locale];
+const copy = HOME_COPY[locale];
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title={copy.title} description={copy.description} locale={locale} slug="">
+  <h1>{t.home.h1}</h1>
+  <p class="lede">{t.home.lede}</p>
+
+  <ul class="tools">
+    {
+      TOOL_LIST.map((tool) => (
+        <li>
+          <a href={localizedPath(base, locale, tool.slug)}>
+            <span class="title">{t.home.cardTitle(tool.format.toUpperCase())}</span>
+            <span class="desc">{TOOL_COPY[locale][tool.format].tagline}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <style>
+    h1 { margin-bottom: 0.25rem; }
+    .lede { color: var(--muted); margin-top: 0; }
+    .tools { list-style: none; padding: 0; display: grid; gap: 0.75rem; margin-top: 2rem; }
+    .tools a {
+      display: flex; flex-direction: column; gap: 0.2rem; padding: 1.1rem 1.25rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      text-decoration: none; color: var(--fg); transition: border-color 0.15s;
+    }
+    .tools a:hover { border-color: var(--accent); }
+    .tools .title { font-weight: 600; }
+    .tools .desc { color: var(--muted); font-size: 0.9rem; }
+  </style>
+</BaseLayout>

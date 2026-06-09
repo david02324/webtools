@@ -1,0 +1,58 @@
+---
+// 도구 화면 본문 — 로케일+도구를 받아 기본/언어별 페이지에서 함께 재사용한다.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ImageConverter from './ImageConverter.astro';
+import type { ToolConfig } from '../lib/formats';
+import { HTML_LANG, type Locale } from '../i18n/config';
+import { UI } from '../i18n/ui';
+import { TOOL_COPY } from '../i18n/content';
+
+interface Props { tool: ToolConfig; locale: Locale; }
+const { tool, locale } = Astro.props;
+const t = UI[locale];
+const copy = TOOL_COPY[locale][tool.format];
+const base = import.meta.env.BASE_URL;
+const url = new URL(`${base}${locale === 'en' ? '' : `${locale}/`}${tool.slug}`, Astro.site).href;
+
+// 구조화 데이터 — 검색엔진이 "무료 웹 애플리케이션"으로 인식하도록.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: copy.title,
+  description: copy.description,
+  url,
+  inLanguage: HTML_LANG[locale],
+  applicationCategory: 'MultimediaApplication',
+  operatingSystem: 'Any',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+};
+---
+
+<BaseLayout
+  title={copy.title}
+  description={copy.description}
+  locale={locale}
+  slug={tool.slug}
+  jsonLd={jsonLd}
+>
+  <h1>{t.tool.heading(tool.format.toUpperCase())}</h1>
+  <p class="lede">{copy.tagline}</p>
+
+  <ImageConverter tool={tool} locale={locale} />
+
+  <section class="info">
+    <h2>{t.tool.featuresTitle}</h2>
+    <ul>
+      {t.tool.features.map((f) => <li set:html={f} />)}
+    </ul>
+    <p class="note">{t.tool.note}</p>
+  </section>
+
+  <style>
+    h1 { margin-bottom: 0.25rem; }
+    .lede { color: var(--muted); margin-top: 0; }
+    .info { margin-top: 2.5rem; }
+    .info h2 { font-size: 1.1rem; }
+    .note { color: var(--muted); font-size: 0.85rem; }
+  </style>
+</BaseLayout>
