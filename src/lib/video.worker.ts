@@ -135,6 +135,7 @@ async function run(req: VideoRequest): Promise<void> {
   let nextTick = startSec;
   let encodeChain: Promise<void> = Promise.resolve();
   let decoderError: Error | null = null;
+  let pendingEncode = 0; // 캡처됐지만 아직 인코딩 안 끝난 ImageData 수(메모리 백프레셔용)
 
   const decoder = new VideoDecoder({
     output: (frame) => {
@@ -147,10 +148,12 @@ async function run(req: VideoRequest): Promise<void> {
           ctx.drawImage(frame, 0, 0, tw, th);
           const imageData = ctx.getImageData(0, 0, tw, th);
           captured++;
+          pendingEncode++;
           nextTick = startSec + captured * fpsInterval;
           encodeChain = encodeChain.then(async () => {
             const webp = await encodeWebp(imageData, { quality });
             animFrames.push({ webp: new Uint8Array(webp), durationMs: frameDurationMs });
+            pendingEncode--;
             post({ id, type: 'progress', done: animFrames.length, total: totalTicks });
           });
         }
@@ -175,7 +178,24 @@ async function run(req: VideoRequest): Promise<void> {
   }
   if (lastIdx < firstIdx) lastIdx = samples.length - 1;
 
+  // 백프레셔: 샘플 전체를 한 번에 밀어넣으면 디코더가 프레임을 메모리에 잔뜩 쌓아
+  // (특히 고해상도) OOM 이 난다. 디코더 입력 큐가 차면 빠질 때까지 기다린다.
+  // 백프레셔: 디코더 입력 큐(decodeQueueSize)와 인코딩 대기 중인 ImageData(pendingEncode)
+  // 둘 다 일정 수준 이하로 유지해, 디코드된 프레임/캡처 버퍼가 메모리에 쌓여 OOM 나는 걸 막는다.
+  // 'dequeue' 이벤트는 구버전 크롬에 없을 수 있어 큐 크기를 폴링한다.
+  const MAX_QUEUE = 6;
+  const MAX_PENDING = 8;
+  const backpressure = async () => {
+    while (!decoderError && (decoder.decodeQueueSize > MAX_QUEUE || pendingEncode > MAX_PENDING)) {
+      await new Promise((res) => setTimeout(res, 4));
+    }
+  };
+
   for (let i = firstIdx; i <= lastIdx; i++) {
+    if (decoderError) break;
+    // 필요한 프레임(totalTicks)을 모두 캡처했고 그 시점도 지났으면 더 디코드할 필요 없다.
+    if (captured >= totalTicks) break;
+    await backpressure();
     const s = samples[i];
     decoder.decode(
       new EncodedVideoChunk({
@@ -188,7 +208,7 @@ async function run(req: VideoRequest): Promise<void> {
   }
 
   try {
-    await decoder.flush();
+    if (!decoderError) await decoder.flush();
   } catch (e) {
     decoderError = decoderError ?? (e instanceof Error ? e : new Error(String(e)));
   }
