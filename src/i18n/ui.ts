@@ -76,6 +76,9 @@ export interface UIStrings {
     trim: string;
     start: string;
     end: string;
+    /** 현재 재생 위치를 시작/끝 지점으로 설정하는 버튼 */
+    setStart: string;
+    setEnd: string;
     fps: string;
     width: string;
     quality: string;
@@ -187,6 +190,8 @@ export const UI: Record<Locale, UIStrings> = {
       trim: 'Trim',
       start: 'Start',
       end: 'End',
+      setStart: 'Set start here',
+      setEnd: 'Set end here',
       fps: 'FPS',
       width: 'Width',
       quality: 'Quality',
@@ -288,6 +293,8 @@ export const UI: Record<Locale, UIStrings> = {
       trim: '구간',
       start: '시작',
       end: '끝',
+      setStart: '여기를 시작점으로',
+      setEnd: '여기를 끝점으로',
       fps: 'FPS',
       width: '가로',
       quality: '품질',
@@ -389,6 +396,8 @@ export const UI: Record<Locale, UIStrings> = {
       trim: '裁剪',
       start: '开始',
       end: '结束',
+      setStart: '设为起点',
+      setEnd: '设为终点',
       fps: '帧率',
       width: '宽度',
       quality: '质量',
@@ -490,6 +499,8 @@ export const UI: Record<Locale, UIStrings> = {
       trim: '区間',
       start: '開始',
       end: '終了',
+      setStart: 'ここを開始点に',
+      setEnd: 'ここを終了点に',
       fps: 'FPS',
       width: '幅',
       quality: '品質',
