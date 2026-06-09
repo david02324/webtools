@@ -27,6 +27,12 @@ export interface UIStrings {
     download: string;
     /** "전체 다운로드 (N)" — {n} 를 개수로 치환한다. */
     downloadAll: (n: number | string) => string;
+    /** 한 장 삭제 (아이콘 버튼 라벨) */
+    delete: string;
+    /** 전체 삭제 버튼 */
+    clearAll: string;
+    /** 전체 삭제 확인 메시지 */
+    clearAllConfirm: string;
     failed: string;
     /** 라이트박스(크게보기) 관련 */
     close: string;
@@ -67,6 +73,9 @@ export const UI: Record<Locale, UIStrings> = {
       converting: 'Converting…',
       download: 'Download',
       downloadAll: (n) => `Download all (${n})`,
+      delete: 'Delete',
+      clearAll: 'Clear all',
+      clearAllConfirm: 'Delete all converted images? This cannot be undone.',
       failed: 'Failed',
       close: 'Close',
       info: {
@@ -105,6 +114,9 @@ export const UI: Record<Locale, UIStrings> = {
       converting: '변환 중…',
       download: '다운로드',
       downloadAll: (n) => `전체 다운로드 (${n})`,
+      delete: '삭제',
+      clearAll: '전체 삭제',
+      clearAllConfirm: '변환한 이미지를 모두 삭제할까요? 되돌릴 수 없습니다.',
       failed: '실패',
       close: '닫기',
       info: {
@@ -143,6 +155,9 @@ export const UI: Record<Locale, UIStrings> = {
       converting: '转换中…',
       download: '下载',
       downloadAll: (n) => `全部下载 (${n})`,
+      delete: '删除',
+      clearAll: '全部删除',
+      clearAllConfirm: '删除所有已转换的图片？此操作无法撤销。',
       failed: '失败',
       close: '关闭',
       info: {
@@ -181,6 +196,9 @@ export const UI: Record<Locale, UIStrings> = {
       converting: '変換中…',
       download: 'ダウンロード',
       downloadAll: (n) => `すべてダウンロード (${n})`,
+      delete: '削除',
+      clearAll: 'すべて削除',
+      clearAllConfirm: '変換した画像をすべて削除しますか？元に戻せません。',
       failed: '失敗',
       close: '閉じる',
       info: {
