@@ -14,9 +14,6 @@ const base = import.meta.env.BASE_URL;
 ---
 
 <BaseLayout title={copy.title} description={copy.description} locale={locale} slug="">
-  <h1>{t.home.h1}</h1>
-  <p class="lede">{t.home.lede}</p>
-
   <ul class="tools">
     <li>
       <a class="featured" href={localizedPath(base, locale, ANALYZE_SLUG)}>
@@ -59,8 +56,6 @@ const base = import.meta.env.BASE_URL;
   </ul>
 
   <style>
-    h1 { margin-bottom: 0.25rem; }
-    .lede { color: var(--muted); margin-top: 0; }
     .tools { list-style: none; padding: 0; display: grid; gap: 0.75rem; margin-top: 2rem; }
     .tools a {
       display: flex; flex-direction: column; gap: 0.2rem; padding: 1.1rem 1.25rem;

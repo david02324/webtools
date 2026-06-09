@@ -19,10 +19,12 @@ export interface VideoResult {
   durationMs: number;
 }
 
-/** 미지원 코덱 등, UI 에서 분기하기 위한 식별 코드를 실어 나르는 에러. */
+export type VideoErrorCode = 'unsupported-codec' | 'no-video' | 'read-failed';
+
+/** 미지원 코덱·파일 읽기 실패 등, UI 에서 분기하기 위한 식별 코드를 실어 나르는 에러. */
 export class VideoError extends Error {
-  code?: 'unsupported-codec' | 'no-video';
-  constructor(message: string, code?: 'unsupported-codec' | 'no-video') {
+  code?: VideoErrorCode;
+  constructor(message: string, code?: VideoErrorCode) {
     super(message);
     this.name = 'VideoError';
     this.code = code;
@@ -74,8 +76,19 @@ export function generateAnimatedWebp(
 ): Promise<VideoResult> {
   return new Promise((resolve, reject) => {
     const id = nextId++;
-    pending.set(id, { resolve, reject, onProgress });
-    const req: VideoRequest = { id, ...opts };
-    getWorker().postMessage(req);
+    const { file, ...rest } = opts;
+    // 파일 읽기는 메인 스레드에서 처리한다. 워커로 File 을 넘겨 거기서 읽으면
+    // 일부 브라우저(Safari 등)에서 NotReadableError 가 나므로, ArrayBuffer 로
+    // 읽어 전송(transfer)한다. 진짜 못 읽는 파일이면 여기서 즉시 분기한다.
+    file
+      .arrayBuffer()
+      .then((buffer) => {
+        pending.set(id, { resolve, reject, onProgress });
+        const req: VideoRequest = { id, buffer, ...rest };
+        getWorker().postMessage(req, [buffer]);
+      })
+      .catch((err) => {
+        reject(new VideoError(err instanceof Error ? err.message : String(err), 'read-failed'));
+      });
   });
 }

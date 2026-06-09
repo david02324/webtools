@@ -10,7 +10,8 @@ import { buildAnimatedWebp, type AnimFrame } from './webp-anim';
 
 export interface VideoRequest {
   id: number;
-  file: File;
+  /** 동영상 파일 바이트열. 메인 스레드에서 읽어 전송한다(워커에서 File 읽기 이슈 회피). */
+  buffer: ArrayBuffer;
   startSec: number;
   endSec: number;
   fps: number;
@@ -56,11 +57,10 @@ function even(n: number): number {
   return Math.max(2, Math.round(n / 2) * 2);
 }
 
-// mp4box 로 파일을 읽어 비디오 트랙 + 디코드 순서 샘플 전체를 모은다.
-function demux(file: File): Promise<{ track: Track; samples: Sample[]; config: ReturnType<typeof getCodecConfig> }> {
-  return new Promise(async (resolve, reject) => {
+// mp4box 로 바이트열을 파싱해 비디오 트랙 + 디코드 순서 샘플 전체를 모은다.
+function demux(ab: ArrayBuffer): Promise<{ track: Track; samples: Sample[]; config: ReturnType<typeof getCodecConfig> }> {
+  return new Promise((resolve, reject) => {
     try {
-      const ab = await file.arrayBuffer();
       const mp4 = createFile();
       const samples: Sample[] = [];
       let track: Track | undefined;
@@ -92,9 +92,9 @@ function demux(file: File): Promise<{ track: Track; samples: Sample[]; config: R
 }
 
 async function run(req: VideoRequest): Promise<void> {
-  const { id, file, startSec, endSec, fps, width, quality, loop } = req;
+  const { id, buffer, startSec, endSec, fps, width, quality, loop } = req;
 
-  const { track, samples, config } = await demux(file);
+  const { track, samples, config } = await demux(buffer);
   const timescale = track.timescale;
   const cts2us = (cts: number) => Math.round((cts / timescale) * 1e6);
   const startUs = startSec * 1e6;
@@ -199,9 +199,9 @@ async function run(req: VideoRequest): Promise<void> {
   if (animFrames.length === 0) throw new Error('구간에서 프레임을 추출하지 못했습니다.');
 
   const blob = buildAnimatedWebp(animFrames, tw, th, loop);
-  const buffer = await blob.arrayBuffer();
+  const outBuffer = await blob.arrayBuffer();
   const durationMs = animFrames.length * frameDurationMs;
-  post({ id, type: 'done', buffer, width: tw, height: th, frames: animFrames.length, durationMs }, [buffer]);
+  post({ id, type: 'done', buffer: outBuffer, width: tw, height: th, frames: animFrames.length, durationMs }, [outBuffer]);
 }
 
 function post(msg: VideoResponse, transfer?: Transferable[]): void {

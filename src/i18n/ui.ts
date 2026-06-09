@@ -99,6 +99,8 @@ export interface UIStrings {
     unsupported: string;
     /** 비디오 트랙 없음 안내 */
     noVideo: string;
+    /** 파일 읽기 실패 안내(클라우드 미다운로드 등) */
+    readFailed: string;
   };
 }
 
@@ -200,6 +202,7 @@ export const UI: Record<Locale, UIStrings> = {
       failed: 'Failed',
       unsupported: 'This video codec can’t be decoded in your browser. Try an H.264 MP4.',
       noVideo: 'No video track was found in this file.',
+      readFailed: 'Couldn’t read this file. If it lives in iCloud or cloud storage, download it locally first, then try again.',
     },
   },
 
@@ -300,6 +303,7 @@ export const UI: Record<Locale, UIStrings> = {
       failed: '실패',
       unsupported: '이 동영상 코덱은 브라우저에서 디코드할 수 없습니다. H.264 MP4 를 사용해 보세요.',
       noVideo: '이 파일에서 비디오 트랙을 찾지 못했습니다.',
+      readFailed: '파일을 읽지 못했습니다. iCloud·클라우드에 있는 파일이면 먼저 기기로 내려받은 뒤 다시 시도해 주세요.',
     },
   },
 
@@ -400,6 +404,7 @@ export const UI: Record<Locale, UIStrings> = {
       failed: '失败',
       unsupported: '浏览器无法解码此视频编解码器。请尝试 H.264 MP4。',
       noVideo: '此文件中未找到视频轨道。',
+      readFailed: '无法读取此文件。如果它存储在 iCloud 或云端，请先下载到本地再重试。',
     },
   },
 
@@ -500,6 +505,7 @@ export const UI: Record<Locale, UIStrings> = {
       failed: '失敗',
       unsupported: 'この動画コーデックはブラウザでデコードできません。H.264 の MP4 をお試しください。',
       noVideo: 'このファイルに映像トラックが見つかりませんでした。',
+      readFailed: 'このファイルを読み込めませんでした。iCloud やクラウド上にある場合は、先に端末へダウンロードしてからお試しください。',
     },
   },
 };
