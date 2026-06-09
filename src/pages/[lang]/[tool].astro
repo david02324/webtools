@@ -1,0 +1,22 @@
+---
+// 비기본 로케일 도구 페이지 — /webtools/ko/to-webp 등.
+// 로케일 × 도구 조합을 빌드 시점에 정적 HTML 로 생성한다.
+import ToolView from '../../components/ToolView.astro';
+import { TOOL_LIST, type ToolConfig } from '../../lib/formats';
+import { LOCALES, DEFAULT_LOCALE, type Locale } from '../../i18n/config';
+
+export function getStaticPaths() {
+  const langs = LOCALES.filter((l) => l !== DEFAULT_LOCALE);
+  return langs.flatMap((lang) =>
+    TOOL_LIST.map((tool) => ({
+      params: { lang, tool: tool.slug },
+      props: { lang, tool },
+    })),
+  );
+}
+
+interface Props { lang: Locale; tool: ToolConfig; }
+const { lang, tool } = Astro.props;
+---
+
+<ToolView tool={tool} locale={lang} />

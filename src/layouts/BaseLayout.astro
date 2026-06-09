@@ -1,0 +1,165 @@
+---
+// 모든 페이지 공통 레이아웃 — SEO 메타/OG/hreflang/구조화 데이터를 빌드 시점 HTML 에 박는다.
+// 각 페이지가 진짜 정적 HTML 로 생성되므로 검색엔진·링크 미리보기가 완전히 동작한다.
+import {
+  LOCALES,
+  DEFAULT_LOCALE,
+  LOCALE_LABELS,
+  HTML_LANG,
+  OG_LOCALE,
+  localizedPath,
+  type Locale,
+} from '../i18n/config';
+import { UI } from '../i18n/ui';
+
+interface Props {
+  title: string;
+  description: string;
+  locale: Locale;
+  /** 도구 슬러그. 홈은 빈 문자열. canonical/hreflang 계산용. */
+  slug?: string;
+  /** JSON-LD 구조화 데이터(선택). 도구 페이지에서 주입한다. */
+  jsonLd?: Record<string, unknown>;
+}
+
+const { title, description, locale, slug = '', jsonLd } = Astro.props;
+const t = UI[locale];
+const base = import.meta.env.BASE_URL;
+
+const canonical = new URL(localizedPath(base, locale, slug), Astro.site).href;
+const ogImage = new URL(`${base}og-default.png`, Astro.site).href;
+
+// 모든 로케일에 대한 hreflang 대체 링크. x-default 는 기본 로케일(en)로.
+const alternates = LOCALES.map((loc) => ({
+  hreflang: HTML_LANG[loc],
+  href: new URL(localizedPath(base, loc, slug), Astro.site).href,
+}));
+const xDefault = new URL(localizedPath(base, DEFAULT_LOCALE, slug), Astro.site).href;
+
+// 언어 스위처용 — 현재 페이지를 각 언어로 연결.
+const langLinks = LOCALES.map((loc) => ({
+  locale: loc,
+  label: LOCALE_LABELS[loc],
+  href: localizedPath(base, loc, slug),
+  current: loc === locale,
+}));
+---
+
+<!doctype html>
+<html lang={HTML_LANG[locale]}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <!-- hreflang: 검색엔진에 언어별 대체 페이지를 알려 중복/잘못된 언어 노출을 방지 -->
+    {
+      alternates.map((alt) => (
+        <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
+      ))
+    }
+    <link rel="alternate" hreflang="x-default" href={xDefault} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WebTools" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content={OG_LOCALE[locale]} />
+    {
+      LOCALES.filter((loc) => loc !== locale).map((loc) => (
+        <meta property="og:locale:alternate" content={OG_LOCALE[loc]} />
+      ))
+    }
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {
+      jsonLd && (
+        <script
+          type="application/ld+json"
+          set:html={JSON.stringify(jsonLd)}
+        />
+      )
+    }
+
+    <slot name="head" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a href={localizedPath(base, locale)} class="logo">WebTools</a>
+      <nav class="lang-switch" aria-label={t.langSwitcher}>
+        {
+          langLinks.map((l) => (
+            <a
+              href={l.href}
+              hreflang={HTML_LANG[l.locale]}
+              lang={HTML_LANG[l.locale]}
+              aria-current={l.current ? 'true' : undefined}
+              class={l.current ? 'current' : undefined}
+            >
+              {l.label}
+            </a>
+          ))
+        }
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>{t.footer}</p>
+    </footer>
+
+    <style is:global>
+      :root {
+        --bg: #0f1115;
+        --fg: #e6e8eb;
+        --muted: #9aa0a6;
+        --accent: #6ea8fe;
+        --card: #1a1d23;
+        --border: #2a2e36;
+      }
+      * { box-sizing: border-box; }
+      /* 스크롤바 자리를 항상 예약해, 라이트박스 등으로 스크롤을 잠가도
+         페이지가 가로로 밀리지 않게 한다. */
+      html { scrollbar-gutter: stable; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+      a { color: var(--accent); }
+      .site-header {
+        max-width: 760px; margin: 0 auto; padding: 1.25rem 1rem;
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .logo { font-weight: 700; font-size: 1.15rem; text-decoration: none; color: var(--fg); }
+      .lang-switch { display: flex; gap: 0.1rem; flex-wrap: wrap; font-size: 0.85rem; }
+      .lang-switch a {
+        padding: 0.2rem 0.5rem; border-radius: 6px; text-decoration: none;
+        color: var(--muted);
+      }
+      .lang-switch a:hover { color: var(--fg); }
+      .lang-switch a.current { color: var(--fg); font-weight: 600; background: var(--card); }
+      .site-footer {
+        max-width: 760px; margin: 0 auto; padding: 2rem 1rem;
+        color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+      }
+    </style>
+  </body>
+</html>

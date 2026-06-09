@@ -1,0 +1,562 @@
+---
+// 변환기 UI + 클라이언트 아일랜드. 포맷별 설정과 로케일을 props 로 받아 재사용된다.
+// 결과는 갤러리(썸네일) 형태로 쌓이고, 여러 장이면 한 번에(ZIP) 내려받을 수 있다.
+// 썸네일을 누르면 라이트박스로 크게보기 + 상세 정보를 보여준다.
+import type { ToolConfig } from '../lib/formats';
+import type { Locale } from '../i18n/config';
+import { UI } from '../i18n/ui';
+
+interface Props {
+  tool: ToolConfig;
+  locale: Locale;
+}
+const { tool, locale } = Astro.props;
+const c = UI[locale].converter;
+
+// 클라이언트 스크립트로 넘길 문자열만 추려 JSON 으로 직렬화(함수 제외).
+const i18n = {
+  converting: c.converting,
+  download: c.download,
+  downloadAll: c.downloadAll('{n}'),
+  failed: c.failed,
+  close: c.close,
+  info: c.info,
+};
+---
+
+<section
+  class="converter"
+  data-format={tool.format}
+  data-mime={tool.mime}
+  data-ext={tool.ext}
+  data-quality={tool.defaultQuality}
+>
+  <script type="application/json" class="conv-i18n" is:inline set:html={JSON.stringify(i18n)} />
+
+  <label class="dropzone" id="dropzone">
+    <input type="file" id="file-input" accept="image/*" multiple hidden />
+    <span class="dz-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V4m0 0L7 9m5-5 5 5" />
+        <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
+      </svg>
+    </span>
+    <span class="dz-text">{c.dropText}</span>
+    <span class="dz-sub">{c.dropSub}</span>
+  </label>
+
+  <div class="controls">
+    <label for="quality">{c.quality} <strong id="quality-val">{tool.defaultQuality}</strong></label>
+    <input type="range" id="quality" min="1" max="100" value={tool.defaultQuality} />
+    <button type="button" class="download-all" id="download-all" hidden></button>
+  </div>
+
+  <div class="gallery" id="results"></div>
+</section>
+
+<!-- 라이트박스(크게보기) -->
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lb-backdrop" id="lb-backdrop"></div>
+  <div class="lb-dialog" role="dialog" aria-modal="true" aria-label="image preview">
+    <button type="button" class="lb-close" id="lb-close" aria-label={c.close}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+    <div class="lb-stage"><img id="lb-img" alt="" /></div>
+    <aside class="lb-info">
+      <h3 class="lb-name" id="lb-name"></h3>
+      <dl class="lb-stats" id="lb-stats"></dl>
+      <a class="lb-download" id="lb-download" download>{c.download}</a>
+    </aside>
+  </div>
+</div>
+
+<style>
+  .converter { margin: 1.5rem 0; }
+
+  /* 드롭존 */
+  .dropzone {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.5rem; padding: 2.75rem 1rem; text-align: center; cursor: pointer;
+    border: 1.5px dashed var(--border); border-radius: 16px;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(110, 168, 254, 0.06), transparent 60%),
+      var(--card);
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  }
+  .dropzone:hover { border-color: #3a4350; }
+  .dropzone.drag {
+    border-color: var(--accent); border-style: solid;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(110, 168, 254, 0.16), transparent 60%),
+      var(--card);
+    transform: scale(1.005);
+  }
+  .dz-icon {
+    display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+    color: var(--accent); background: rgba(110, 168, 254, 0.1);
+  }
+  .dz-icon svg { width: 24px; height: 24px; }
+  .dz-text { font-weight: 600; }
+  .dz-sub { color: var(--muted); font-size: 0.85rem; }
+
+  /* 컨트롤 바 */
+  .controls { display: flex; align-items: center; gap: 0.85rem; margin: 1.35rem 0; }
+  .controls > label { font-size: 0.9rem; white-space: nowrap; }
+  .controls > label strong {
+    font-variant-numeric: tabular-nums;
+    display: inline-block; min-width: 2.2ch; text-align: right; color: var(--accent);
+  }
+  .controls input[type='range'] { flex: 1; accent-color: var(--accent); }
+  .download-all {
+    white-space: nowrap; cursor: pointer; font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: #0b0d11; border: 0; border-radius: 9px; padding: 0.5rem 0.95rem;
+    background: linear-gradient(180deg, #8ab9ff, var(--accent));
+    box-shadow: 0 2px 10px rgba(110, 168, 254, 0.25);
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .download-all:hover { filter: brightness(1.06); }
+  .download-all:active { transform: translateY(1px); }
+
+  /* 갤러리 격자 */
+  .gallery {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 0.9rem; margin: 0; padding: 0;
+  }
+  .card {
+    /* min-width:0 — 큰 이미지의 원본 너비가 칸을 밀어내지 않게 한다 */
+    margin: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    animation: card-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .card:hover {
+    transform: translateY(-3px); border-color: #3d4756;
+    box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .thumb {
+    position: relative; width: 100%; min-width: 0; padding: 0; border: 0;
+    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 2 / 3; overflow: hidden; cursor: zoom-in; text-decoration: none;
+    background-color: #0b0d11;
+    background-image:
+      linear-gradient(45deg, #15181e 25%, transparent 25%),
+      linear-gradient(-45deg, #15181e 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #15181e 75%),
+      linear-gradient(-45deg, transparent 75%, #15181e 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  }
+  /* 박스를 고정 비율(2:3)로 두고, 이미지는 원본 크기와 무관하게
+     그 안에 비율을 유지한 채 꽉 맞춰 넣는다(레터박스). */
+  .thumb img {
+    width: 100%; height: 100%; object-fit: contain; display: block;
+    transition: transform 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .card:hover .thumb img { transform: scale(1.06); }
+  .thumb .status { color: var(--muted); font-size: 0.8rem; }
+  .thumb .status.err { color: #ff7a7a; padding: 0.6rem; text-align: center; line-height: 1.4; }
+
+  /* 썸네일 위 배지 */
+  .badge {
+    position: absolute; top: 0.5rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 0.16rem 0.44rem; border-radius: 999px; backdrop-filter: blur(6px);
+    font-feature-settings: 'tnum';
+  }
+  .badge.fmt { left: 0.5rem; color: #cde0ff; background: rgba(110, 168, 254, 0.22); }
+  .badge.save { right: 0.5rem; }
+  .badge.save.pos { color: #b6f0c4; background: rgba(54, 179, 99, 0.24); }
+  .badge.save.neg { color: #ffc9c9; background: rgba(232, 90, 90, 0.24); }
+
+  figcaption.cap { display: flex; flex-direction: column; gap: 0.28rem; padding: 0.6rem 0.7rem 0.7rem; }
+  .cap .name {
+    font-size: 0.84rem; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cap .meta {
+    color: var(--muted); font-size: 0.74rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 라이트박스 */
+  .lightbox { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1.25rem; }
+  .lightbox[hidden] { display: none; }
+  .lb-backdrop {
+    position: absolute; inset: 0; background: rgba(6, 8, 12, 0.78);
+    backdrop-filter: blur(8px); animation: lb-fade 0.2s ease both;
+  }
+  .lb-dialog {
+    position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) 280px;
+    width: min(960px, 100%); max-height: min(86vh, 720px); overflow: hidden;
+    background: #14171d; border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85);
+    animation: lb-pop 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes lb-pop {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .lb-stage {
+    display: grid; place-items: center; min-height: 240px; padding: 1.25rem;
+    background-color: #0b0d11;
+    background-image:
+      linear-gradient(45deg, #14181f 25%, transparent 25%),
+      linear-gradient(-45deg, #14181f 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #14181f 75%),
+      linear-gradient(-45deg, transparent 75%, #14181f 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+  }
+  .lb-stage img { max-width: 100%; max-height: calc(min(86vh, 720px) - 2.5rem); object-fit: contain; display: block; }
+  .lb-info {
+    display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem 1.35rem;
+    border-left: 1px solid var(--border); overflow-y: auto;
+  }
+  .lb-name {
+    margin: 0; font-size: 1rem; font-weight: 600; word-break: break-all; line-height: 1.4;
+  }
+  .lb-stats { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.55rem 1rem; }
+  .lb-stats dt { color: var(--muted); font-size: 0.8rem; }
+  .lb-stats dd {
+    margin: 0; text-align: right; font-size: 0.82rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .lb-stats dd .pos { color: #6fdc8c; }
+  .lb-stats dd .neg { color: #ff8a8a; }
+  .lb-download {
+    margin-top: auto; text-align: center; text-decoration: none; font-size: 0.9rem; font-weight: 600;
+    color: #0b0d11; border-radius: 10px; padding: 0.6rem 1rem;
+    background: linear-gradient(180deg, #8ab9ff, var(--accent));
+  }
+  .lb-download:hover { filter: brightness(1.06); }
+  .lb-close {
+    position: absolute; top: 0.6rem; right: 0.6rem; z-index: 2;
+    display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+    color: var(--fg); cursor: pointer; border: 1px solid var(--border); border-radius: 9px;
+    background: rgba(20, 23, 29, 0.7); backdrop-filter: blur(6px);
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .lb-close:hover { background: rgba(40, 46, 56, 0.9); }
+  .lb-close:active { transform: scale(0.94); }
+  .lb-close svg { width: 17px; height: 17px; }
+
+  @media (max-width: 620px) {
+    .lb-dialog { grid-template-columns: 1fr; max-height: 88vh; }
+    .lb-stage img { max-height: 50vh; }
+    .lb-info { border-left: 0; border-top: 1px solid var(--border); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lb-backdrop, .lb-dialog { animation: none; }
+  }
+</style>
+
+<!--
+  갤러리 카드와 라이트박스 통계 행은 클라이언트 스크립트가 innerHTML 로 런타임 생성한다.
+  Astro 의 스코프 스타일(data-astro-cid)은 이 노드들에 붙지 않아 적용되지 않으므로,
+  해당 규칙만 전역(is:global)으로 두되 .converter / .lightbox 로 네임스페이스해 누수를 막는다.
+-->
+<style is:global>
+  @keyframes card-pop {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .converter .card {
+    margin: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    animation: card-pop 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .converter .card:hover {
+    transform: translateY(-3px); border-color: #3d4756;
+    box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+  }
+  .converter .thumb {
+    position: relative; width: 100%; min-width: 0; padding: 0; border: 0;
+    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 2 / 3; overflow: hidden; cursor: zoom-in; text-decoration: none;
+    background-color: #0b0d11;
+    background-image:
+      linear-gradient(45deg, #15181e 25%, transparent 25%),
+      linear-gradient(-45deg, #15181e 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #15181e 75%),
+      linear-gradient(-45deg, transparent 75%, #15181e 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  }
+  /* 박스를 고정 비율(2:3)로 두고, 이미지는 원본 크기와 무관하게
+     그 안에 비율을 유지한 채 꽉 맞춰 넣는다(레터박스). */
+  .converter .thumb img {
+    width: 100%; height: 100%; object-fit: contain; display: block;
+    transition: transform 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .converter .card:hover .thumb img { transform: scale(1.06); }
+  .converter .thumb .status { color: var(--muted); font-size: 0.8rem; }
+  .converter .thumb .status.err { color: #ff7a7a; padding: 0.6rem; text-align: center; line-height: 1.4; }
+
+  .converter .badge {
+    position: absolute; top: 0.5rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 0.16rem 0.44rem; border-radius: 999px; backdrop-filter: blur(6px);
+    font-feature-settings: 'tnum';
+  }
+  .converter .badge.fmt { left: 0.5rem; color: #cde0ff; background: rgba(110, 168, 254, 0.22); }
+  .converter .badge.save { right: 0.5rem; }
+  .converter .badge.save.pos { color: #b6f0c4; background: rgba(54, 179, 99, 0.24); }
+  .converter .badge.save.neg { color: #ffc9c9; background: rgba(232, 90, 90, 0.24); }
+
+  .converter figcaption.cap { display: flex; flex-direction: column; gap: 0.28rem; padding: 0.6rem 0.7rem 0.7rem; }
+  .converter .cap .name {
+    font-size: 0.84rem; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .converter .cap .meta {
+    color: var(--muted); font-size: 0.74rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 라이트박스 통계 행(dt/dd, ± 색상)도 JS 로 채워지므로 전역으로 둔다. */
+  .lightbox .lb-stats dt { color: var(--muted); font-size: 0.8rem; }
+  .lightbox .lb-stats dd {
+    margin: 0; text-align: right; font-size: 0.82rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .lightbox .lb-stats dd .pos { color: #6fdc8c; }
+  .lightbox .lb-stats dd .neg { color: #ff8a8a; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .converter .card { animation: none; }
+    .converter .card:hover { transform: none; }
+    .converter .card:hover .thumb img { transform: none; }
+  }
+</style>
+
+<script>
+  import { convertImage } from '../lib/convert';
+  import { makeZip, type ZipEntry } from '../lib/zip';
+  import type { TargetFormat } from '../lib/formats';
+
+  interface I18n {
+    converting: string;
+    download: string;
+    downloadAll: string;
+    failed: string;
+    close: string;
+    info: {
+      dimensions: string;
+      original: string;
+      converted: string;
+      saved: string;
+      quality: string;
+      format: string;
+    };
+  }
+
+  interface Item {
+    name: string;
+    url: string;
+    blob: Blob;
+    width: number;
+    height: number;
+    origSize: number;
+    saved: number;
+    quality: number;
+    format: string;
+  }
+
+  const root = document.querySelector<HTMLElement>('.converter')!;
+  const format = root.dataset.format as TargetFormat;
+  const mime = root.dataset.mime!;
+  const ext = root.dataset.ext!;
+  const T = JSON.parse(root.querySelector<HTMLElement>('.conv-i18n')!.textContent!) as I18n;
+
+  const input = root.querySelector<HTMLInputElement>('#file-input')!;
+  const dropzone = root.querySelector<HTMLElement>('#dropzone')!;
+  const qualityInput = root.querySelector<HTMLInputElement>('#quality')!;
+  const qualityVal = root.querySelector<HTMLElement>('#quality-val')!;
+  const results = root.querySelector<HTMLElement>('#results')!;
+  const downloadAllBtn = root.querySelector<HTMLButtonElement>('#download-all')!;
+
+  let quality = Number(root.dataset.quality);
+  const items: Item[] = [];
+
+  qualityInput.addEventListener('input', () => {
+    quality = Number(qualityInput.value);
+    qualityVal.textContent = String(quality);
+  });
+
+  function fmtBytes(n: number): string {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  function esc(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function refreshDownloadAll() {
+    if (items.length >= 2) {
+      downloadAllBtn.hidden = false;
+      downloadAllBtn.textContent = T.downloadAll.replace('{n}', String(items.length));
+    } else {
+      downloadAllBtn.hidden = true;
+    }
+  }
+
+  async function handleFiles(files: FileList | File[]) {
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue;
+
+      const base = file.name.replace(/\.[^.]+$/, '');
+      const fname = `${base}.${ext}`;
+      const safe = esc(fname);
+
+      const card = document.createElement('figure');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="thumb"><span class="status">${T.converting}</span></div>
+        <figcaption class="cap"><span class="name">${safe}</span></figcaption>`;
+      results.prepend(card);
+
+      try {
+        const usedQuality = quality;
+        const { blob, width, height } = await convertImage(file, format, usedQuality, mime);
+        const url = URL.createObjectURL(blob);
+        const saved = file.size > 0 ? Math.round((1 - blob.size / file.size) * 100) : 0;
+        const sign = saved >= 0 ? '−' : '+';
+        const cls = saved >= 0 ? 'pos' : 'neg';
+
+        const item: Item = {
+          name: fname, url, blob, width, height,
+          origSize: file.size, saved, quality: usedQuality, format,
+        };
+        const idx = items.push(item) - 1;
+        card.dataset.idx = String(idx);
+
+        card.innerHTML = `
+          <button type="button" class="thumb" data-idx="${idx}" aria-label="${safe}">
+            <span class="badge fmt">${format.toUpperCase()}</span>
+            <span class="badge save ${cls}">${sign}${Math.abs(saved)}%</span>
+            <img src="${url}" alt="${safe}" loading="lazy" />
+          </button>
+          <figcaption class="cap">
+            <span class="name">${safe}</span>
+            <span class="meta">${width}×${height} · ${fmtBytes(blob.size)}</span>
+          </figcaption>`;
+        refreshDownloadAll();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        card.innerHTML = `
+          <div class="thumb"><span class="status err">${T.failed}: ${esc(msg)}</span></div>
+          <figcaption class="cap"><span class="name">${safe}</span></figcaption>`;
+      }
+    }
+  }
+
+  // ── 라이트박스 ─────────────────────────────────────────────
+  const lightbox = document.querySelector<HTMLElement>('#lightbox')!;
+  const lbImg = lightbox.querySelector<HTMLImageElement>('#lb-img')!;
+  const lbName = lightbox.querySelector<HTMLElement>('#lb-name')!;
+  const lbStats = lightbox.querySelector<HTMLElement>('#lb-stats')!;
+  const lbDownload = lightbox.querySelector<HTMLAnchorElement>('#lb-download')!;
+
+  function row(dt: string, dd: string): string {
+    return `<dt>${dt}</dt><dd>${dd}</dd>`;
+  }
+
+  function openLightbox(item: Item) {
+    lbImg.src = item.url;
+    lbImg.alt = item.name;
+    lbName.textContent = item.name;
+    const sign = item.saved >= 0 ? '−' : '+';
+    const cls = item.saved >= 0 ? 'pos' : 'neg';
+    lbStats.innerHTML =
+      row(T.info.format, item.format.toUpperCase()) +
+      row(T.info.dimensions, `${item.width} × ${item.height}`) +
+      row(T.info.original, fmtBytes(item.origSize)) +
+      row(T.info.converted, fmtBytes(item.blob.size)) +
+      row(T.info.saved, `<span class="${cls}">${sign}${Math.abs(item.saved)}%</span>`) +
+      row(T.info.quality, String(item.quality));
+    lbDownload.href = item.url;
+    lbDownload.download = item.name;
+    lightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  // 썸네일 클릭(위임) → 라이트박스
+  results.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('.thumb[data-idx]');
+    if (!btn) return;
+    const item = items[Number(btn.dataset.idx)];
+    if (item) openLightbox(item);
+  });
+
+  lightbox.querySelector('#lb-close')!.addEventListener('click', closeLightbox);
+  lightbox.querySelector('#lb-backdrop')!.addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
+  });
+
+  // ── 전체 다운로드(ZIP) ─────────────────────────────────────
+  downloadAllBtn.addEventListener('click', async () => {
+    const used = new Set<string>();
+    const entries: ZipEntry[] = [];
+    for (const item of items) {
+      let name = item.name;
+      if (used.has(name)) {
+        const dot = name.lastIndexOf('.');
+        const stem = dot === -1 ? name : name.slice(0, dot);
+        const tail = dot === -1 ? '' : name.slice(dot);
+        let i = 1;
+        while (used.has(`${stem}-${i}${tail}`)) i++;
+        name = `${stem}-${i}${tail}`;
+      }
+      used.add(name);
+      entries.push({ name, data: new Uint8Array(await item.blob.arrayBuffer()) });
+    }
+    const zip = makeZip(entries);
+    const url = URL.createObjectURL(zip);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'webtools-images.zip';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  // ── 입력/드래그 ────────────────────────────────────────────
+  input.addEventListener('change', () => input.files && handleFiles(input.files));
+
+  ['dragenter', 'dragover'].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag');
+    }),
+  );
+  ['dragleave', 'drop'].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+    }),
+  );
+  dropzone.addEventListener('drop', (e) => {
+    const dt = (e as DragEvent).dataTransfer;
+    if (dt?.files) handleFiles(dt.files);
+  });
+</script>

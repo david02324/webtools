@@ -1,0 +1,18 @@
+---
+// 기본 로케일(영어) 도구 페이지 — /webtools/to-webp 등.
+// 슬러그를 빌드 시점에 정적 HTML 로 생성한다.
+import ToolView from '../components/ToolView.astro';
+import { TOOL_LIST, type ToolConfig } from '../lib/formats';
+
+export function getStaticPaths() {
+  return TOOL_LIST.map((tool) => ({
+    params: { tool: tool.slug },
+    props: { tool },
+  }));
+}
+
+interface Props { tool: ToolConfig; }
+const { tool } = Astro.props;
+---
+
+<ToolView tool={tool} locale="en" />
