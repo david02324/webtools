@@ -34,6 +34,7 @@ const i18n = {
   failed: v.failed,
   unsupported: v.unsupported,
   noVideo: v.noVideo,
+  readFailed: v.readFailed,
 };
 ---
 
@@ -276,7 +277,7 @@ const i18n = {
     generate: string; generating: string;
     size: string; dimensions: string; frames: string; duration: string;
     download: string; another: string;
-    failed: string; unsupported: string; noVideo: string;
+    failed: string; unsupported: string; noVideo: string; readFailed: string;
   }
 
   const WARN_FRAMES = 150;
@@ -518,6 +519,7 @@ const i18n = {
       if (err instanceof VideoError) {
         if (err.code === 'unsupported-codec') msg = T.unsupported;
         else if (err.code === 'no-video') msg = T.noVideo;
+        else if (err.code === 'read-failed') msg = T.readFailed;
       }
       errorEl.textContent = `${T.failed}: ${msg}`;
       errorEl.hidden = false;
