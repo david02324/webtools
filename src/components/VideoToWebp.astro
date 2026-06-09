@@ -1,0 +1,573 @@
+---
+// 동영상 한 구간 → 애니메이션 WebP 변환 UI + 클라이언트 아일랜드.
+// 1) 동영상 드롭 → 2) 구간 트림 + fps/크기/품질/반복 설정 → 3) 생성(워커) → 결과 미리보기/다운로드.
+// 모든 처리는 브라우저 안에서 끝난다(업로드 없음). 디코드는 WebCodecs + mp4box.
+import type { Locale } from '../i18n/config';
+import { UI } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const v = UI[locale].video;
+
+// 클라이언트로 넘길 문자열만 추려 직렬화(함수는 placeholder 로 치환해 템플릿화).
+const i18n = {
+  trim: v.trim,
+  start: v.start,
+  end: v.end,
+  fps: v.fps,
+  width: v.width,
+  quality: v.quality,
+  loop: v.loop,
+  loopHint: v.loopHint,
+  estFrames: v.estFrames('{n}'),
+  tooMany: v.tooMany,
+  generate: v.generate,
+  generating: v.generating('{done}', '{total}'),
+  size: v.result.size,
+  dimensions: v.result.dimensions,
+  frames: v.result.frames,
+  duration: v.result.duration,
+  download: v.download,
+  another: v.another,
+  failed: v.failed,
+  unsupported: v.unsupported,
+  noVideo: v.noVideo,
+};
+---
+
+<section class="vid">
+  <script type="application/json" class="vid-i18n" is:inline set:html={JSON.stringify(i18n)} />
+
+  <!-- 1단계: 드롭존 -->
+  <label class="dropzone" id="dropzone">
+    <input type="file" id="file-input" accept="video/*" hidden />
+    <span class="dz-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+    <span class="dz-text">{v.dropText}</span>
+    <span class="dz-sub">{v.dropSub}</span>
+  </label>
+  <p class="load-error" id="load-error" hidden></p>
+
+  <!-- 2단계: 편집기 -->
+  <div class="editor" id="editor" hidden>
+    <div class="stage">
+      <video id="preview" playsinline controls preload="metadata"></video>
+    </div>
+
+    <!-- 구간 트림 -->
+    <div class="trim">
+      <div class="track" id="track">
+        <div class="sel" id="sel"></div>
+        <div class="playhead" id="playhead"></div>
+        <button type="button" class="handle" id="h-start" aria-label={v.start}></button>
+        <button type="button" class="handle" id="h-end" aria-label={v.end}></button>
+      </div>
+      <div class="times">
+        <span class="t-start" id="t-start">0:00.0</span>
+        <span class="t-len" id="t-len"></span>
+        <span class="t-end" id="t-end">0:00.0</span>
+      </div>
+    </div>
+
+    <!-- 컨트롤 -->
+    <div class="controls">
+      <label class="ctl">
+        <span>{v.fps} <strong id="fps-val">12</strong></span>
+        <input type="range" id="fps" min="5" max="24" step="1" value="12" />
+      </label>
+      <label class="ctl">
+        <span>{v.width} <strong id="width-val">480</strong>px <em id="height-val"></em></span>
+        <input type="range" id="width" min="120" max="1280" step="2" value="480" />
+      </label>
+      <label class="ctl">
+        <span>{v.quality} <strong id="quality-val">80</strong></span>
+        <input type="range" id="quality" min="1" max="100" step="1" value="80" />
+      </label>
+      <label class="ctl loop">
+        <span>{v.loop} <em>{v.loopHint}</em></span>
+        <input type="number" id="loop" min="0" max="65535" step="1" value="0" />
+      </label>
+    </div>
+
+    <p class="est" id="est"></p>
+
+    <div class="actions">
+      <button type="button" class="primary" id="generate">{v.generate}</button>
+      <button type="button" class="ghost" id="reset">{v.another}</button>
+    </div>
+
+    <div class="progress" id="progress" hidden>
+      <div class="bar"><div class="fill" id="bar-fill"></div></div>
+      <span class="progress-label" id="progress-label"></span>
+    </div>
+    <p class="error" id="error" hidden></p>
+  </div>
+
+  <!-- 3단계: 결과 -->
+  <div class="result" id="result" hidden>
+    <div class="stage out"><img id="out-img" alt="" /></div>
+    <dl class="stats" id="out-stats"></dl>
+    <div class="actions">
+      <a class="primary" id="download" download>{v.download}</a>
+      <button type="button" class="ghost" id="result-reset">{v.another}</button>
+    </div>
+  </div>
+</section>
+
+<style>
+  .vid { margin: 1.5rem 0; }
+
+  /* 드롭존 — ImageConverter 와 동일 톤 */
+  .dropzone {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.5rem; padding: 2.75rem 1rem; text-align: center; cursor: pointer;
+    border: 1.5px dashed var(--border); border-radius: 16px;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(110, 168, 254, 0.06), transparent 60%),
+      var(--card);
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  }
+  .dropzone:hover { border-color: #3a4350; }
+  .dropzone.drag {
+    border-color: var(--accent); border-style: solid;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(110, 168, 254, 0.16), transparent 60%),
+      var(--card);
+    transform: scale(1.005);
+  }
+  .dz-icon {
+    display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+    color: var(--accent); background: rgba(110, 168, 254, 0.1);
+  }
+  .dz-icon svg { width: 24px; height: 24px; }
+  .dz-text { font-weight: 600; }
+  .dz-sub { color: var(--muted); font-size: 0.85rem; }
+  .load-error { margin: 0.9rem 0 0; color: #ff8a8a; font-size: 0.88rem; text-align: center; }
+
+  /* 미리보기 / 결과 스테이지 */
+  .stage {
+    display: grid; place-items: center; border-radius: 14px; overflow: hidden;
+    background-color: #0b0d11;
+    background-image:
+      linear-gradient(45deg, #15181e 25%, transparent 25%),
+      linear-gradient(-45deg, #15181e 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #15181e 75%),
+      linear-gradient(-45deg, transparent 75%, #15181e 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+    border: 1px solid var(--border);
+  }
+  .stage video, .stage img { max-width: 100%; max-height: 52vh; display: block; }
+
+  /* 트림 트랙 */
+  .trim { margin: 1.1rem 0 0.4rem; }
+  .track {
+    position: relative; height: 34px; border-radius: 8px; margin: 0 9px;
+    background: linear-gradient(180deg, #1d212a, #161922);
+    border: 1px solid var(--border);
+  }
+  .sel {
+    position: absolute; top: -1px; bottom: -1px; left: 0; right: 0;
+    background: rgba(110, 168, 254, 0.18); border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+  .playhead { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; opacity: 0.7; left: 0; pointer-events: none; }
+  .handle {
+    position: absolute; top: 50%; width: 18px; height: 44px; margin-left: -9px;
+    transform: translateY(-50%); padding: 0; cursor: ew-resize;
+    background: var(--accent); border: 2px solid #0b0d11; border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); touch-action: none;
+  }
+  .handle::after {
+    content: ''; position: absolute; inset: 0; margin: auto; width: 2px; height: 16px;
+    background: rgba(11, 13, 17, 0.5); border-radius: 2px;
+  }
+  .times {
+    display: flex; justify-content: space-between; gap: 1rem; margin-top: 0.4rem;
+    font-size: 0.78rem; color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .t-len { color: var(--accent); }
+
+  /* 컨트롤 그리드 */
+  .controls {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.9rem 1.4rem; margin: 1.25rem 0 0.4rem;
+  }
+  .ctl { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; }
+  .ctl > span { display: flex; align-items: baseline; gap: 0.4rem; }
+  .ctl strong {
+    color: var(--accent); font-variant-numeric: tabular-nums;
+    min-width: 2.5ch; display: inline-block;
+  }
+  .ctl em { color: var(--muted); font-style: normal; font-size: 0.78rem; }
+  .ctl input[type='range'] { width: 100%; accent-color: var(--accent); }
+  .ctl.loop { justify-content: flex-start; }
+  .ctl.loop input[type='number'] {
+    width: 7rem; font: inherit; padding: 0.35rem 0.5rem;
+    background: var(--card); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+
+  .est { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--muted); }
+  .est.warn { color: #ffc36b; }
+
+  /* 버튼 */
+  .actions { display: flex; gap: 0.6rem; margin-top: 1.1rem; flex-wrap: wrap; }
+  .primary {
+    cursor: pointer; font: inherit; font-size: 0.9rem; font-weight: 600; text-decoration: none;
+    color: #0b0d11; border: 0; border-radius: 10px; padding: 0.6rem 1.2rem; text-align: center;
+    background: linear-gradient(180deg, #8ab9ff, var(--accent));
+    box-shadow: 0 2px 10px rgba(110, 168, 254, 0.25);
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .primary:hover { filter: brightness(1.06); }
+  .primary:active { transform: translateY(1px); }
+  .primary[disabled] { filter: grayscale(0.5) brightness(0.8); cursor: default; transform: none; }
+  .ghost {
+    cursor: pointer; font: inherit; font-size: 0.9rem; font-weight: 600;
+    color: var(--muted); background: transparent; border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.6rem 1rem; transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .ghost:hover { color: var(--fg); border-color: #3d4756; }
+
+  /* 진행률 */
+  .progress { margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+  .bar { flex: 1; height: 8px; border-radius: 999px; background: #1d212a; overflow: hidden; border: 1px solid var(--border); }
+  .fill { height: 100%; width: 0; background: linear-gradient(90deg, #8ab9ff, var(--accent)); transition: width 0.15s ease; }
+  .progress-label {
+    font-size: 0.8rem; color: var(--muted); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .error { margin-top: 0.9rem; color: #ff8a8a; font-size: 0.86rem; }
+
+  /* 결과 */
+  .result .stage.out { padding: 1rem; }
+  .stats {
+    margin: 1rem 0 0; display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem;
+  }
+  .stats dt { color: var(--muted); font-size: 0.82rem; }
+  .stats dd {
+    margin: 0; text-align: right; font-size: 0.84rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fill { transition: none; }
+  }
+</style>
+
+<script>
+  import { generateAnimatedWebp, VideoError } from '../lib/video';
+
+  interface I18n {
+    trim: string; start: string; end: string;
+    fps: string; width: string; quality: string; loop: string; loopHint: string;
+    estFrames: string; tooMany: string;
+    generate: string; generating: string;
+    size: string; dimensions: string; frames: string; duration: string;
+    download: string; another: string;
+    failed: string; unsupported: string; noVideo: string;
+  }
+
+  const WARN_FRAMES = 150;
+
+  const root = document.querySelector<HTMLElement>('.vid')!;
+  const T = JSON.parse(root.querySelector<HTMLElement>('.vid-i18n')!.textContent!) as I18n;
+
+  const input = root.querySelector<HTMLInputElement>('#file-input')!;
+  const dropzone = root.querySelector<HTMLElement>('#dropzone')!;
+  const loadError = root.querySelector<HTMLElement>('#load-error')!;
+  const editor = root.querySelector<HTMLElement>('#editor')!;
+  const result = root.querySelector<HTMLElement>('#result')!;
+  const video = root.querySelector<HTMLVideoElement>('#preview')!;
+
+  const track = root.querySelector<HTMLElement>('#track')!;
+  const sel = root.querySelector<HTMLElement>('#sel')!;
+  const playhead = root.querySelector<HTMLElement>('#playhead')!;
+  const hStart = root.querySelector<HTMLButtonElement>('#h-start')!;
+  const hEnd = root.querySelector<HTMLButtonElement>('#h-end')!;
+  const tStart = root.querySelector<HTMLElement>('#t-start')!;
+  const tEnd = root.querySelector<HTMLElement>('#t-end')!;
+  const tLen = root.querySelector<HTMLElement>('#t-len')!;
+
+  const fpsInput = root.querySelector<HTMLInputElement>('#fps')!;
+  const fpsVal = root.querySelector<HTMLElement>('#fps-val')!;
+  const widthInput = root.querySelector<HTMLInputElement>('#width')!;
+  const widthVal = root.querySelector<HTMLElement>('#width-val')!;
+  const heightVal = root.querySelector<HTMLElement>('#height-val')!;
+  const qualityInput = root.querySelector<HTMLInputElement>('#quality')!;
+  const qualityVal = root.querySelector<HTMLElement>('#quality-val')!;
+  const loopInput = root.querySelector<HTMLInputElement>('#loop')!;
+  const est = root.querySelector<HTMLElement>('#est')!;
+
+  const generateBtn = root.querySelector<HTMLButtonElement>('#generate')!;
+  const resetBtn = root.querySelector<HTMLButtonElement>('#reset')!;
+  const progress = root.querySelector<HTMLElement>('#progress')!;
+  const barFill = root.querySelector<HTMLElement>('#bar-fill')!;
+  const progressLabel = root.querySelector<HTMLElement>('#progress-label')!;
+  const errorEl = root.querySelector<HTMLElement>('#error')!;
+
+  const outImg = root.querySelector<HTMLImageElement>('#out-img')!;
+  const outStats = root.querySelector<HTMLElement>('#out-stats')!;
+  const download = root.querySelector<HTMLAnchorElement>('#download')!;
+  const resultReset = root.querySelector<HTMLButtonElement>('#result-reset')!;
+
+  let fileName = 'animation';
+  let duration = 0;
+  let srcW = 0;
+  let srcH = 0;
+  let startSec = 0;
+  let endSec = 0;
+  let videoUrl: string | null = null;
+  let outUrl: string | null = null;
+  let loadingFile = false;
+
+  function fmtTime(s: number): string {
+    if (!isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    const d = Math.floor((s * 10) % 10);
+    return `${m}:${String(sec).padStart(2, '0')}.${d}`;
+  }
+
+  function fmtBytes(n: number): string {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  function targetWidth(): number {
+    return Math.max(2, Math.round(Number(widthInput.value) / 2) * 2);
+  }
+  function targetHeight(): number {
+    if (!srcW) return 0;
+    return Math.max(2, Math.round((targetWidth() * (srcH / srcW)) / 2) * 2);
+  }
+
+  function refreshDims() {
+    const w = targetWidth();
+    widthVal.textContent = String(w);
+    heightVal.textContent = srcW ? `× ${targetHeight()}` : '';
+  }
+
+  function refreshEst() {
+    const fps = Number(fpsInput.value);
+    const n = Math.max(1, Math.round((endSec - startSec) * fps));
+    est.textContent = T.estFrames.replace('{n}', String(n));
+    est.classList.toggle('warn', n > WARN_FRAMES);
+    if (n > WARN_FRAMES) est.textContent += ` — ${T.tooMany}`;
+  }
+
+  function pct(t: number): number {
+    return duration > 0 ? (t / duration) * 100 : 0;
+  }
+
+  function refreshTrack() {
+    const a = pct(startSec);
+    const b = pct(endSec);
+    sel.style.left = `${a}%`;
+    sel.style.right = `${100 - b}%`;
+    hStart.style.left = `${a}%`;
+    hEnd.style.left = `${b}%`;
+    tStart.textContent = fmtTime(startSec);
+    tEnd.textContent = fmtTime(endSec);
+    tLen.textContent = fmtTime(endSec - startSec);
+    refreshEst();
+  }
+
+  function refreshPlayhead() {
+    playhead.style.left = `${pct(video.currentTime)}%`;
+  }
+
+  // ── 파일 선택 → 편집기 ─────────────────────────────────────
+  function loadFile(file: File) {
+    if (!file.type.startsWith('video/')) return;
+    fileName = file.name.replace(/\.[^.]+$/, '') || 'animation';
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    videoUrl = URL.createObjectURL(file);
+    (video as HTMLVideoElement & { _file?: File })._file = file;
+    loadingFile = true;
+    loadError.hidden = true;
+    video.src = videoUrl;
+    errorEl.hidden = true;
+  }
+
+  // 브라우저가 이 컨테이너/코덱을 `<video>` 로 열지 못하면 메타데이터가 안 뜬다 → 안내.
+  video.addEventListener('error', () => {
+    if (!loadingFile) return; // reset 시 src 제거로 나는 에러는 무시
+    loadingFile = false;
+    loadError.textContent = T.failed + ': ' + T.unsupported;
+    loadError.hidden = false;
+  });
+
+  video.addEventListener('loadedmetadata', () => {
+    loadingFile = false;
+    duration = video.duration || 0;
+    srcW = video.videoWidth || 0;
+    srcH = video.videoHeight || 0;
+    startSec = 0;
+    endSec = Math.min(duration, 3); // 기본 첫 3초
+    // 가로 슬라이더 범위/기본값을 원본에 맞춘다.
+    const maxW = Math.min(srcW || 1280, 1920);
+    widthInput.max = String(Math.max(120, maxW));
+    widthInput.value = String(Math.min(maxW, 480));
+    refreshDims();
+    refreshTrack();
+    refreshPlayhead();
+    dropzone.hidden = true;
+    editor.hidden = false;
+    result.hidden = true;
+  });
+
+  video.addEventListener('timeupdate', refreshPlayhead);
+  video.addEventListener('seeked', refreshPlayhead);
+
+  // ── 트림 핸들 드래그 ───────────────────────────────────────
+  function dragHandle(which: 'start' | 'end', e: PointerEvent) {
+    e.preventDefault();
+    const move = (ev: PointerEvent) => {
+      const rect = track.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+      const t = frac * duration;
+      if (which === 'start') {
+        startSec = Math.min(t, endSec - 0.05);
+        startSec = Math.max(0, startSec);
+        video.currentTime = startSec;
+      } else {
+        endSec = Math.max(t, startSec + 0.05);
+        endSec = Math.min(duration, endSec);
+        video.currentTime = endSec;
+      }
+      refreshTrack();
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+  hStart.addEventListener('pointerdown', (e) => dragHandle('start', e));
+  hEnd.addEventListener('pointerdown', (e) => dragHandle('end', e));
+
+  // ── 컨트롤 ─────────────────────────────────────────────────
+  fpsInput.addEventListener('input', () => {
+    fpsVal.textContent = fpsInput.value;
+    refreshEst();
+  });
+  widthInput.addEventListener('input', refreshDims);
+  qualityInput.addEventListener('input', () => {
+    qualityVal.textContent = qualityInput.value;
+  });
+
+  // ── 생성 ───────────────────────────────────────────────────
+  generateBtn.addEventListener('click', async () => {
+    const file = (video as HTMLVideoElement & { _file?: File })._file;
+    if (!file) return;
+    errorEl.hidden = true;
+    generateBtn.disabled = true;
+    progress.hidden = false;
+    barFill.style.width = '0%';
+    progressLabel.textContent = T.generating.replace('{done}', '0').replace('{total}', '…');
+
+    try {
+      const res = await generateAnimatedWebp(
+        {
+          file,
+          startSec,
+          endSec,
+          fps: Number(fpsInput.value),
+          width: targetWidth(),
+          quality: Number(qualityInput.value),
+          loop: Math.max(0, Number(loopInput.value) || 0),
+        },
+        (done, total) => {
+          const p = total > 0 ? Math.round((done / total) * 100) : 0;
+          barFill.style.width = `${p}%`;
+          progressLabel.textContent = T.generating
+            .replace('{done}', String(done))
+            .replace('{total}', String(total));
+        },
+      );
+
+      if (outUrl) URL.revokeObjectURL(outUrl);
+      outUrl = URL.createObjectURL(res.blob);
+      outImg.src = outUrl;
+      outStats.innerHTML =
+        `<dt>${T.dimensions}</dt><dd>${res.width} × ${res.height}</dd>` +
+        `<dt>${T.frames}</dt><dd>${res.frames}</dd>` +
+        `<dt>${T.duration}</dt><dd>${(res.durationMs / 1000).toFixed(1)}s</dd>` +
+        `<dt>${T.size}</dt><dd>${fmtBytes(res.blob.size)}</dd>`;
+      download.href = outUrl;
+      download.download = `${fileName}.webp`;
+
+      editor.hidden = true;
+      result.hidden = false;
+    } catch (err) {
+      let msg = err instanceof Error ? err.message : String(err);
+      if (err instanceof VideoError) {
+        if (err.code === 'unsupported-codec') msg = T.unsupported;
+        else if (err.code === 'no-video') msg = T.noVideo;
+      }
+      errorEl.textContent = `${T.failed}: ${msg}`;
+      errorEl.hidden = false;
+    } finally {
+      generateBtn.disabled = false;
+      progress.hidden = true;
+    }
+  });
+
+  // ── 초기화 ─────────────────────────────────────────────────
+  function reset() {
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    if (outUrl) URL.revokeObjectURL(outUrl);
+    videoUrl = null;
+    outUrl = null;
+    loadingFile = false;
+    video.removeAttribute('src');
+    video.load();
+    input.value = '';
+    editor.hidden = true;
+    result.hidden = true;
+    loadError.hidden = true;
+    dropzone.hidden = false;
+  }
+  resetBtn.addEventListener('click', reset);
+  resultReset.addEventListener('click', reset);
+
+  // ── 입력 / 드래그앤드롭 ────────────────────────────────────
+  input.addEventListener('change', () => {
+    if (input.files && input.files[0]) loadFile(input.files[0]);
+  });
+  ['dragenter', 'dragover'].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag');
+    }),
+  );
+  ['dragleave', 'drop'].forEach((ev) =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+    }),
+  );
+  dropzone.addEventListener('drop', (e) => {
+    const dt = (e as DragEvent).dataTransfer;
+    if (dt?.files && dt.files[0]) loadFile(dt.files[0]);
+  });
+
+  window.addEventListener('resize', () => {
+    refreshTrack();
+    refreshPlayhead();
+  });
+</script>

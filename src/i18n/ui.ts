@@ -67,6 +67,39 @@ export interface UIStrings {
       format: string;
     };
   };
+  video: {
+    /** 페이지 제목(h1) */
+    title: string;
+    dropText: string;
+    dropSub: string;
+    /** 구간 트림 라벨 */
+    trim: string;
+    start: string;
+    end: string;
+    fps: string;
+    width: string;
+    quality: string;
+    loop: string;
+    /** 반복 입력 보조 설명 (예: "0 = 무한") */
+    loopHint: string;
+    /** 예상 프레임 수 — {n} 치환 */
+    estFrames: (n: number | string) => string;
+    /** 프레임이 너무 많을 때 경고 문구 */
+    tooMany: string;
+    generate: string;
+    /** 생성 진행률 — {done}/{total} 치환 */
+    generating: (done: number | string, total: number | string) => string;
+    /** 결과 통계 라벨 */
+    result: { size: string; dimensions: string; frames: string; duration: string };
+    download: string;
+    /** 다른 동영상으로 다시 시작 */
+    another: string;
+    failed: string;
+    /** 코덱 미지원 안내 */
+    unsupported: string;
+    /** 비디오 트랙 없음 안내 */
+    noVideo: string;
+  };
 }
 
 export const UI: Record<Locale, UIStrings> = {
@@ -145,6 +178,29 @@ export const UI: Record<Locale, UIStrings> = {
         format: 'Format',
       },
     },
+    video: {
+      title: 'Video to Animated WebP',
+      dropText: 'Drop a video here, or click to choose',
+      dropSub: 'MP4 · MOV · M4V (H.264 / AV1) — trim a clip into an animated WebP',
+      trim: 'Trim',
+      start: 'Start',
+      end: 'End',
+      fps: 'FPS',
+      width: 'Width',
+      quality: 'Quality',
+      loop: 'Loop',
+      loopHint: '0 = infinite',
+      estFrames: (n) => `≈ ${n} frames`,
+      tooMany: 'large file & slow encode',
+      generate: 'Create animated WebP',
+      generating: (d, t) => `Encoding frame ${d} / ${t}`,
+      result: { size: 'Size', dimensions: 'Dimensions', frames: 'Frames', duration: 'Duration' },
+      download: 'Download',
+      another: 'Another video',
+      failed: 'Failed',
+      unsupported: 'This video codec can’t be decoded in your browser. Try an H.264 MP4.',
+      noVideo: 'No video track was found in this file.',
+    },
   },
 
   ko: {
@@ -221,6 +277,29 @@ export const UI: Record<Locale, UIStrings> = {
         quality: '품질',
         format: '포맷',
       },
+    },
+    video: {
+      title: '동영상 → 움직이는 WebP',
+      dropText: '동영상을 드래그하거나 클릭해 선택하세요',
+      dropSub: 'MP4 · MOV · M4V (H.264 / AV1) — 구간을 잘라 애니메이션 WebP 로',
+      trim: '구간',
+      start: '시작',
+      end: '끝',
+      fps: 'FPS',
+      width: '가로',
+      quality: '품질',
+      loop: '반복',
+      loopHint: '0 = 무한',
+      estFrames: (n) => `약 ${n} 프레임`,
+      tooMany: '용량 크고 인코딩 느림',
+      generate: '애니메이션 WebP 만들기',
+      generating: (d, t) => `프레임 인코딩 ${d} / ${t}`,
+      result: { size: '용량', dimensions: '크기', frames: '프레임', duration: '길이' },
+      download: '다운로드',
+      another: '다른 동영상',
+      failed: '실패',
+      unsupported: '이 동영상 코덱은 브라우저에서 디코드할 수 없습니다. H.264 MP4 를 사용해 보세요.',
+      noVideo: '이 파일에서 비디오 트랙을 찾지 못했습니다.',
     },
   },
 
@@ -299,6 +378,29 @@ export const UI: Record<Locale, UIStrings> = {
         format: '格式',
       },
     },
+    video: {
+      title: '视频转动态 WebP',
+      dropText: '拖入视频，或点击选择',
+      dropSub: 'MP4 · MOV · M4V（H.264 / AV1）— 裁剪片段，生成动态 WebP',
+      trim: '裁剪',
+      start: '开始',
+      end: '结束',
+      fps: '帧率',
+      width: '宽度',
+      quality: '质量',
+      loop: '循环',
+      loopHint: '0 = 无限',
+      estFrames: (n) => `约 ${n} 帧`,
+      tooMany: '文件大、编码慢',
+      generate: '生成动态 WebP',
+      generating: (d, t) => `正在编码第 ${d} / ${t} 帧`,
+      result: { size: '大小', dimensions: '尺寸', frames: '帧数', duration: '时长' },
+      download: '下载',
+      another: '换一个视频',
+      failed: '失败',
+      unsupported: '浏览器无法解码此视频编解码器。请尝试 H.264 MP4。',
+      noVideo: '此文件中未找到视频轨道。',
+    },
   },
 
   ja: {
@@ -375,6 +477,29 @@ export const UI: Record<Locale, UIStrings> = {
         quality: '品質',
         format: '形式',
       },
+    },
+    video: {
+      title: '動画 → アニメーション WebP',
+      dropText: '動画をドラッグするか、クリックして選択',
+      dropSub: 'MP4 · MOV · M4V（H.264 / AV1）— 区間を切り出してアニメーション WebP に',
+      trim: '区間',
+      start: '開始',
+      end: '終了',
+      fps: 'FPS',
+      width: '幅',
+      quality: '品質',
+      loop: 'ループ',
+      loopHint: '0 = 無限',
+      estFrames: (n) => `約 ${n} フレーム`,
+      tooMany: 'サイズ大・エンコード遅い',
+      generate: 'アニメーション WebP を作成',
+      generating: (d, t) => `フレームをエンコード中 ${d} / ${t}`,
+      result: { size: 'サイズ', dimensions: '寸法', frames: 'フレーム', duration: '長さ' },
+      download: 'ダウンロード',
+      another: '別の動画',
+      failed: '失敗',
+      unsupported: 'この動画コーデックはブラウザでデコードできません。H.264 の MP4 をお試しください。',
+      noVideo: 'このファイルに映像トラックが見つかりませんでした。',
     },
   },
 };

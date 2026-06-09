@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://david02324.github.io/webtools/sitemap-index.xml
+Sitemap: https://fastwebtools.app/sitemap-index.xml

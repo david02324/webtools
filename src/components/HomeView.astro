@@ -1,10 +1,10 @@
 ---
 // 홈 화면 본문 — 로케일만 받아 기본/언어별 페이지에서 함께 재사용한다.
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { TOOL_LIST, ANALYZE_SLUG } from '../lib/formats';
+import { TOOL_LIST, ANALYZE_SLUG, VIDEO_TO_WEBP_SLUG } from '../lib/formats';
 import { localizedPath, type Locale } from '../i18n/config';
 import { UI } from '../i18n/ui';
-import { HOME_COPY, TOOL_COPY, ANALYZER_COPY } from '../i18n/content';
+import { HOME_COPY, TOOL_COPY, ANALYZER_COPY, VIDEO_COPY } from '../i18n/content';
 
 interface Props { locale: Locale; }
 const { locale } = Astro.props;
@@ -30,6 +30,20 @@ const base = import.meta.env.BASE_URL;
           {t.home.analyzerCard}
         </span>
         <span class="desc">{ANALYZER_COPY[locale].tagline}</span>
+      </a>
+    </li>
+    <li>
+      <a class="featured" href={localizedPath(base, locale, VIDEO_TO_WEBP_SLUG)}>
+        <span class="title">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          {t.video.title}
+        </span>
+        <span class="desc">{VIDEO_COPY[locale].tagline}</span>
       </a>
     </li>
     {

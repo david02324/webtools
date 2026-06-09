@@ -68,6 +68,34 @@ export const ANALYZER_COPY: Record<Locale, ToolCopy> = {
   },
 };
 
+// 동영상 → 애니메이션 WebP 도구의 SEO 텍스트(로케일별).
+export const VIDEO_COPY: Record<Locale, ToolCopy> = {
+  en: {
+    title: 'Video to Animated WebP — Trim a Clip in Your Browser | WebTools',
+    description:
+      'Turn any part of a video into an animated WebP right in your browser. Trim the clip, set FPS, size and quality — frame-accurate via WebCodecs. No uploads, no install.',
+    tagline: 'Trim any video clip into a smooth animated WebP. Frame-accurate, no uploads.',
+  },
+  ko: {
+    title: '동영상을 움직이는 WebP로 — 브라우저에서 구간 자르기 | WebTools',
+    description:
+      '동영상의 원하는 구간을 브라우저에서 바로 애니메이션 WebP로 만듭니다. 구간을 자르고 FPS·크기·품질을 조절 — WebCodecs 기반 프레임 정밀 처리. 업로드도 설치도 없습니다.',
+    tagline: '동영상 구간을 부드러운 애니메이션 WebP로. 프레임 정밀, 업로드 없음.',
+  },
+  zh: {
+    title: '视频转动态 WebP — 在浏览器中裁剪片段 | WebTools',
+    description:
+      '在浏览器中直接将视频的任意片段转换为动态 WebP。裁剪片段，设置帧率、尺寸与质量 — 基于 WebCodecs 的逐帧精确处理。无需上传，无需安装。',
+    tagline: '将任意视频片段裁剪为流畅的动态 WebP。逐帧精确，无需上传。',
+  },
+  ja: {
+    title: '動画をアニメーション WebP に — ブラウザで区間を切り出し | WebTools',
+    description:
+      '動画の好きな区間をブラウザ内でアニメーション WebP に変換。区間を切り出し、FPS・サイズ・品質を調整 — WebCodecs によるフレーム精度の処理。アップロードもインストールも不要。',
+    tagline: '動画の区間を滑らかなアニメーション WebP に。フレーム精度、アップロード不要。',
+  },
+};
+
 export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
   en: {
     webp: {
