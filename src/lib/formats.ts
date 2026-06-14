@@ -41,3 +41,6 @@ export const ANALYZE_SLUG = 'analyze-image';
 
 /** 동영상 구간 → 애니메이션 WebP 도구의 URL 슬러그. 단독 페이지. */
 export const VIDEO_TO_WEBP_SLUG = 'video-to-webp';
+
+/** 텍스트 → 슬랙 이모지(128×128 PNG) 도구의 URL 슬러그. 단독 페이지. */
+export const SLACK_EMOJI_SLUG = 'slack-emoji';
