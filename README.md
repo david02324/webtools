@@ -2,7 +2,7 @@
 
 Browser-based image tools that run entirely on your device. **No uploads, no install, no server** — every image is analyzed and converted locally in your browser, so your files never leave your machine.
 
-🔗 **Live:** https://david02324.github.io/webtools/
+🔗 **Live:** https://fastwebtools.app/
 
 ## Tools
 
