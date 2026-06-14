@@ -1,0 +1,199 @@
+---
+// 텍스트 → 슬랙 이모지 생성 UI + 클라이언트 아일랜드.
+// 단일 인스턴스라 라벨은 서버에서 그대로 박고, 캔버스 렌더링만 클라이언트에서 한다.
+import type { Locale } from '../i18n/config';
+import { UI } from '../i18n/ui';
+
+interface Props { locale: Locale; }
+const { locale } = Astro.props;
+const s = UI[locale].slackEmoji;
+
+// 폰트 선택지 — 이름은 번역하지 않고 CSS font-family 값을 그대로 쓴다.
+const FONTS = [
+  { label: 'Sans', value: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
+  { label: 'Serif', value: "Georgia, 'Times New Roman', serif" },
+  { label: 'Mono', value: "ui-monospace, 'SF Mono', Menlo, monospace" },
+  { label: 'Impact', value: "Impact, 'Arial Narrow Bold', sans-serif" },
+];
+---
+
+<section class="emoji">
+  <div class="layout">
+    {/* 미리보기 — 투명 배경을 보이게 체커보드 위에 캔버스를 얹는다. */}
+    <div class="stage">
+      <div class="preview" id="preview"></div>
+    </div>
+
+    {/* 컨트롤 */}
+    <div class="controls">
+      <label class="field">
+        <span class="lbl">{s.text}</span>
+        <textarea id="text" rows="2" placeholder={s.textPlaceholder} spellcheck="false">LGTM</textarea>
+        <span class="hint">{s.textHint}</span>
+      </label>
+
+      <div class="row">
+        <label class="color">
+          <span class="lbl">{s.textColor}</span>
+          <input type="color" id="text-color" value="#ffffff" />
+        </label>
+        <label class="color" id="bg-field">
+          <span class="lbl">{s.bgColor}</span>
+          <input type="color" id="bg-color" value="#611f69" />
+        </label>
+      </div>
+
+      <div class="row toggles">
+        <label class="toggle"><input type="checkbox" id="transparent" /> {s.transparent}</label>
+        <label class="toggle"><input type="checkbox" id="bold" checked /> {s.bold}</label>
+      </div>
+
+      <label class="field">
+        <span class="lbl">{s.font}</span>
+        <select id="font">
+          {FONTS.map((f, i) => (
+            <option value={f.value} selected={i === 0}>{f.label}</option>
+          ))}
+        </select>
+      </label>
+
+      <button type="button" class="download" id="download">{s.download}</button>
+      <p class="note">{s.note}</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .emoji { margin: 1.5rem 0; }
+  .layout { display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem; align-items: start; }
+
+  /* 미리보기 */
+  .stage {
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; border-radius: 16px;
+    border: 1px solid var(--border); background: var(--card);
+  }
+  .preview {
+    flex: none; width: 100%; max-width: 200px; aspect-ratio: 1 / 1;
+    border-radius: 12px; overflow: hidden;
+    background-color: #0b0d11;
+    background-image:
+      linear-gradient(45deg, #15181e 25%, transparent 25%),
+      linear-gradient(-45deg, #15181e 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #15181e 75%),
+      linear-gradient(-45deg, transparent 75%, #15181e 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
+  .preview :global(canvas) { display: block; width: 100%; height: 100%; }
+
+  /* 컨트롤 */
+  .controls { display: flex; flex-direction: column; gap: 1.1rem; }
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .lbl { font-size: 0.85rem; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 0.78rem; }
+
+  textarea {
+    font: inherit; resize: vertical; padding: 0.6rem 0.7rem; border-radius: 10px;
+    color: var(--fg); background: var(--card); border: 1px solid var(--border);
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .color { display: flex; flex-direction: column; gap: 0.4rem; }
+  .color input[type='color'] {
+    width: 56px; height: 36px; padding: 0; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); cursor: pointer;
+  }
+  #bg-field.disabled { opacity: 0.4; pointer-events: none; }
+
+  .toggles { gap: 1.25rem; }
+  .toggle { display: flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; cursor: pointer; }
+  .toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  select {
+    font: inherit; padding: 0.5rem 0.7rem; border-radius: 10px; cursor: pointer;
+    color: var(--fg); background: var(--card); border: 1px solid var(--border);
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .download {
+    margin-top: 0.25rem; cursor: pointer; font: inherit; font-weight: 600;
+    color: #0b0d11; border: 0; border-radius: 10px; padding: 0.65rem 1rem;
+    background: linear-gradient(180deg, #8ab9ff, var(--accent));
+    box-shadow: 0 2px 10px rgba(110, 168, 254, 0.25);
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .download:hover { filter: brightness(1.06); }
+  .download:active { transform: translateY(1px); }
+  .note { color: var(--muted); font-size: 0.8rem; margin: 0; line-height: 1.5; }
+
+  @media (max-width: 560px) {
+    .layout { grid-template-columns: 1fr; justify-items: center; }
+    .controls { width: 100%; }
+  }
+</style>
+
+<script>
+  import { renderTextEmoji, canvasToPng, type EmojiOptions } from '../lib/emoji';
+
+  const root = document.querySelector<HTMLElement>('.emoji')!;
+  const previewEl = root.querySelector<HTMLElement>('#preview')!;
+  const textEl = root.querySelector<HTMLTextAreaElement>('#text')!;
+  const textColorEl = root.querySelector<HTMLInputElement>('#text-color')!;
+  const bgColorEl = root.querySelector<HTMLInputElement>('#bg-color')!;
+  const bgField = root.querySelector<HTMLElement>('#bg-field')!;
+  const transparentEl = root.querySelector<HTMLInputElement>('#transparent')!;
+  const boldEl = root.querySelector<HTMLInputElement>('#bold')!;
+  const fontEl = root.querySelector<HTMLSelectElement>('#font')!;
+  const downloadBtn = root.querySelector<HTMLButtonElement>('#download')!;
+
+  function currentOptions(size: number): EmojiOptions {
+    return {
+      text: textEl.value || '',
+      textColor: textColorEl.value,
+      bgColor: bgColorEl.value,
+      transparent: transparentEl.checked,
+      fontFamily: fontEl.value,
+      bold: boldEl.checked,
+      size,
+    };
+  }
+
+  function render() {
+    bgField.classList.toggle('disabled', transparentEl.checked);
+    // 미리보기는 또렷하게 보이도록 표시 크기보다 크게(256) 그린다.
+    // intrinsic 크기(256)가 컨테이너를 넘치지 않도록 표시 크기는 JS 로 직접 박는다.
+    const canvas = renderTextEmoji(currentOptions(256));
+    canvas.style.display = 'block';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    previewEl.replaceChildren(canvas);
+  }
+
+  // 입력이 바뀔 때마다 미리보기 갱신.
+  for (const el of [textEl, textColorEl, bgColorEl, transparentEl, boldEl, fontEl]) {
+    el.addEventListener('input', render);
+  }
+
+  downloadBtn.addEventListener('click', async () => {
+    // 다운로드는 슬랙 권장 규격인 128×128 로 내보낸다.
+    const canvas = renderTextEmoji(currentOptions(128));
+    const blob = await canvasToPng(canvas);
+    const slug =
+      textEl.value
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9_-]/g, '')
+        .slice(0, 32) || 'emoji';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${slug}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  render();
+</script>

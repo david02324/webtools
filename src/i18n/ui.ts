@@ -13,6 +13,8 @@ export interface UIStrings {
     cardTitle: (format: string) => string;
     /** 이미지 분석기 카드 제목 */
     analyzerCard: string;
+    /** 기능 섹션 제목 — 이미지 / 동영상 / 그 외 */
+    sections: { image: string; video: string; other: string };
   };
   tool: {
     /** "{format} 변환기" */
@@ -105,6 +107,25 @@ export interface UIStrings {
     /** 파일 읽기 실패 안내(클라우드 미다운로드 등) */
     readFailed: string;
   };
+  slackEmoji: {
+    /** 페이지 제목(h1) */
+    title: string;
+    /** 텍스트 입력 라벨 */
+    text: string;
+    /** 텍스트 입력 placeholder */
+    textPlaceholder: string;
+    /** 줄바꿈 입력 보조 설명 */
+    textHint: string;
+    textColor: string;
+    bgColor: string;
+    /** 배경 투명 토글 */
+    transparent: string;
+    bold: string;
+    font: string;
+    download: string;
+    /** 사용 안내(규격/업로드 방법) */
+    note: string;
+  };
 }
 
 export const UI: Record<Locale, UIStrings> = {
@@ -116,6 +137,7 @@ export const UI: Record<Locale, UIStrings> = {
       lede: 'Image tools that run right in your browser. No uploads, no install, free.',
       cardTitle: (f) => `Convert to ${f}`,
       analyzerCard: 'Analyze an image',
+      sections: { image: 'Image tools', video: 'Video tools', other: 'Other' },
     },
     tool: {
       heading: (f) => `${f} Converter`,
@@ -209,6 +231,19 @@ export const UI: Record<Locale, UIStrings> = {
       noVideo: 'No video track was found in this file.',
       readFailed: 'Couldn’t read this file. If it’s in cloud storage (iCloud / OneDrive), download it to your device first, then try again.',
     },
+    slackEmoji: {
+      title: 'Slack Emoji Maker',
+      text: 'Text',
+      textPlaceholder: 'LGTM',
+      textHint: 'Tip: press Enter to split into multiple lines.',
+      textColor: 'Text',
+      bgColor: 'Background',
+      transparent: 'Transparent',
+      bold: 'Bold',
+      font: 'Font',
+      download: 'Download PNG',
+      note: 'Exports a 128×128 PNG — Slack’s recommended size. Upload it in Slack via Add emoji.',
+    },
   },
 
   ko: {
@@ -219,6 +254,7 @@ export const UI: Record<Locale, UIStrings> = {
       lede: '브라우저에서 바로 쓰는 이미지 도구. 업로드 없음, 설치 없음, 무료.',
       cardTitle: (f) => `${f} 로 변환`,
       analyzerCard: '이미지 분석',
+      sections: { image: '이미지 도구', video: '동영상 도구', other: '그 외' },
     },
     tool: {
       heading: (f) => `${f} 변환기`,
@@ -312,6 +348,19 @@ export const UI: Record<Locale, UIStrings> = {
       noVideo: '이 파일에서 비디오 트랙을 찾지 못했습니다.',
       readFailed: '파일을 읽지 못했습니다. iCloud·OneDrive 등 클라우드에 있는 파일이면 먼저 기기로 내려받은 뒤 다시 시도해 주세요.',
     },
+    slackEmoji: {
+      title: '슬랙 이모지 만들기',
+      text: '텍스트',
+      textPlaceholder: 'LGTM',
+      textHint: '팁: Enter 로 줄을 나눌 수 있어요.',
+      textColor: '글자',
+      bgColor: '배경',
+      transparent: '투명 배경',
+      bold: '굵게',
+      font: '폰트',
+      download: 'PNG 다운로드',
+      note: '슬랙 권장 규격인 128×128 PNG 로 저장됩니다. 슬랙의 이모지 추가에서 업로드하세요.',
+    },
   },
 
   zh: {
@@ -322,6 +371,7 @@ export const UI: Record<Locale, UIStrings> = {
       lede: '在浏览器中即开即用的图片工具。无需上传，无需安装，完全免费。',
       cardTitle: (f) => `转换为 ${f}`,
       analyzerCard: '分析图片',
+      sections: { image: '图片工具', video: '视频工具', other: '其他' },
     },
     tool: {
       heading: (f) => `${f} 转换器`,
@@ -415,6 +465,19 @@ export const UI: Record<Locale, UIStrings> = {
       noVideo: '此文件中未找到视频轨道。',
       readFailed: '无法读取此文件。如果它存储在 iCloud 或云端，请先下载到本地再重试。',
     },
+    slackEmoji: {
+      title: 'Slack 表情制作',
+      text: '文字',
+      textPlaceholder: 'LGTM',
+      textHint: '提示：按 Enter 可换行。',
+      textColor: '文字',
+      bgColor: '背景',
+      transparent: '透明背景',
+      bold: '加粗',
+      font: '字体',
+      download: '下载 PNG',
+      note: '导出为 Slack 推荐的 128×128 PNG。在 Slack 的“添加表情”中上传即可。',
+    },
   },
 
   ja: {
@@ -425,6 +488,7 @@ export const UI: Record<Locale, UIStrings> = {
       lede: 'ブラウザですぐ使える画像ツール。アップロード不要、インストール不要、無料。',
       cardTitle: (f) => `${f} に変換`,
       analyzerCard: '画像を解析',
+      sections: { image: '画像ツール', video: '動画ツール', other: 'その他' },
     },
     tool: {
       heading: (f) => `${f} コンバーター`,
@@ -517,6 +581,19 @@ export const UI: Record<Locale, UIStrings> = {
       unsupported: 'この動画コーデックはブラウザでデコードできません。H.264 の MP4 をお試しください。',
       noVideo: 'このファイルに映像トラックが見つかりませんでした。',
       readFailed: 'このファイルを読み込めませんでした。iCloud やクラウド上にある場合は、先に端末へダウンロードしてからお試しください。',
+    },
+    slackEmoji: {
+      title: 'Slack 絵文字メーカー',
+      text: 'テキスト',
+      textPlaceholder: 'LGTM',
+      textHint: 'ヒント：Enter で改行できます。',
+      textColor: '文字',
+      bgColor: '背景',
+      transparent: '背景を透明に',
+      bold: '太字',
+      font: 'フォント',
+      download: 'PNG をダウンロード',
+      note: 'Slack 推奨の 128×128 PNG で書き出します。Slack の「絵文字を追加」からアップロードしてください。',
     },
   },
 };

@@ -96,6 +96,34 @@ export const VIDEO_COPY: Record<Locale, ToolCopy> = {
   },
 };
 
+// 텍스트 → 슬랙 이모지 도구의 SEO 텍스트(로케일별).
+export const SLACK_EMOJI_COPY: Record<Locale, ToolCopy> = {
+  en: {
+    title: 'Slack Emoji Maker — Turn Text into a Custom Emoji | WebTools',
+    description:
+      'Create custom Slack emoji from text right in your browser. Type a word, pick colors and a font — download a 128×128 PNG ready to upload. No uploads, no install, free.',
+    tagline: 'Type a word, pick colors — get a 128×128 PNG emoji for Slack. No uploads.',
+  },
+  ko: {
+    title: '슬랙 이모지 만들기 — 텍스트로 커스텀 이모지 생성 | WebTools',
+    description:
+      '브라우저에서 바로 텍스트로 커스텀 슬랙 이모지를 만듭니다. 단어를 입력하고 색상·폰트를 고르면 업로드용 128×128 PNG를 바로 내려받을 수 있습니다. 업로드 없음, 설치 없음, 무료.',
+    tagline: '단어를 입력하고 색상을 고르면 슬랙용 128×128 PNG 이모지 완성. 업로드 없음.',
+  },
+  zh: {
+    title: 'Slack 表情制作 — 用文字生成自定义表情 | WebTools',
+    description:
+      '在浏览器中直接用文字制作自定义 Slack 表情。输入文字，选择颜色与字体，即可下载可上传的 128×128 PNG。无需上传，无需安装，完全免费。',
+    tagline: '输入文字、选择颜色，即可获得用于 Slack 的 128×128 PNG 表情。无需上传。',
+  },
+  ja: {
+    title: 'Slack 絵文字メーカー — テキストからカスタム絵文字を作成 | WebTools',
+    description:
+      'ブラウザ内でテキストからカスタム Slack 絵文字を作成。単語を入力し色とフォントを選ぶだけで、アップロード用の 128×128 PNG をダウンロードできます。アップロード不要、インストール不要、無料。',
+    tagline: '単語を入力して色を選ぶだけで、Slack 用の 128×128 PNG 絵文字が完成。アップロード不要。',
+  },
+};
+
 export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
   en: {
     webp: {
