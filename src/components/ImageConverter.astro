@@ -12,6 +12,8 @@ interface Props {
 }
 const { tool, locale } = Astro.props;
 const c = UI[locale].converter;
+// 압축 도구는 지원 포맷·동작이 달라 드롭존 보조 설명을 따로 쓴다.
+const dropSub = tool.format === 'compress' ? c.dropSubCompress : c.dropSub;
 
 // 클라이언트 스크립트로 넘길 문자열만 추려 JSON 으로 직렬화(함수 제외).
 const i18n = {
@@ -21,6 +23,7 @@ const i18n = {
   delete: c.delete,
   clearAllConfirm: c.clearAllConfirm,
   failed: c.failed,
+  unsupported: c.unsupported,
   close: c.close,
   info: c.info,
 };
@@ -44,7 +47,7 @@ const i18n = {
       </svg>
     </span>
     <span class="dz-text">{c.dropText}</span>
-    <span class="dz-sub">{c.dropSub}</span>
+    <span class="dz-sub">{dropSub}</span>
   </label>
 
   <div class="controls">
@@ -369,7 +372,7 @@ const i18n = {
   import { makeZip, type ZipEntry } from '../lib/zip';
   import { addImage, getImages, deleteImage, clearImages } from '../lib/store';
   import { takePending } from '../lib/handoff';
-  import type { TargetFormat } from '../lib/formats';
+  import type { ToolFormat, WorkerFormat } from '../lib/formats';
 
   interface I18n {
     converting: string;
@@ -378,6 +381,7 @@ const i18n = {
     delete: string;
     clearAllConfirm: string;
     failed: string;
+    unsupported: string;
     close: string;
     info: {
       dimensions: string;
@@ -403,10 +407,25 @@ const i18n = {
   }
 
   const root = document.querySelector<HTMLElement>('.converter')!;
-  const format = root.dataset.format as TargetFormat;
+  const format = root.dataset.format as ToolFormat;
   const mime = root.dataset.mime!;
   const ext = root.dataset.ext!;
   const T = JSON.parse(root.querySelector<HTMLElement>('.conv-i18n')!.textContent!) as I18n;
+
+  // 압축 모드 — 출력 포맷은 입력 포맷 그대로, 코덱만 입력에 맞춰 고른다.
+  // (Squoosh 와 동일: JPEG→MozJPEG, PNG→OxiPNG 무손실, WebP/AVIF→재인코딩)
+  const isCompress = format === 'compress';
+  const COMPRESS_TARGETS: Record<string, { codec: WorkerFormat; ext: string; mime: string }> = {
+    'image/jpeg': { codec: 'mozjpeg', ext: 'jpg', mime: 'image/jpeg' },
+    'image/png': { codec: 'oxipng', ext: 'png', mime: 'image/png' },
+    'image/webp': { codec: 'webp', ext: 'webp', mime: 'image/webp' },
+    'image/avif': { codec: 'avif', ext: 'avif', mime: 'image/avif' },
+  };
+
+  /** 압축 모드에선 저장된 이름의 확장자가 곧 표시 포맷이다. */
+  function displayFormat(name: string): string {
+    return isCompress ? name.replace(/^.*\./, '') : format;
+  }
 
   const input = root.querySelector<HTMLInputElement>('#file-input')!;
   const dropzone = root.querySelector<HTMLElement>('#dropzone')!;
@@ -470,8 +489,13 @@ const i18n = {
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) continue;
 
+      // 변환 모드는 페이지의 대상 포맷으로, 압축 모드는 입력 포맷 그대로 인코딩한다.
+      const target = isCompress
+        ? COMPRESS_TARGETS[file.type]
+        : { codec: format as WorkerFormat, ext, mime };
+
       const base = file.name.replace(/\.[^.]+$/, '');
-      const fname = `${base}.${ext}`;
+      const fname = `${base}.${target?.ext ?? ''}`;
       const safe = esc(fname);
 
       const card = document.createElement('figure');
@@ -481,12 +505,20 @@ const i18n = {
         <figcaption class="cap"><span class="name">${safe}</span></figcaption>`;
       results.prepend(card);
 
+      if (!target) {
+        card.innerHTML = `
+          <div class="thumb"><span class="status err">${esc(T.unsupported)}</span></div>
+          <figcaption class="cap"><span class="name">${esc(file.name)}</span></figcaption>`;
+        continue;
+      }
+
       try {
         const usedQuality = quality;
-        const { blob, width, height } = await convertImage(file, format, usedQuality, mime);
+        const { blob, width, height } = await convertImage(file, target.codec, usedQuality, target.mime);
         const saved = file.size > 0 ? Math.round((1 - blob.size / file.size) * 100) : 0;
 
         // 브라우저에 영구 저장(실패해도 세션 내에선 동작하도록 음수 id 폴백).
+        // format 은 페이지 키('webp'|'avif'|'compress') — 히스토리 분리에 쓰인다.
         const rec = {
           format, name: fname, blob, width, height,
           origSize: file.size, saved, quality: usedQuality, createdAt: Date.now(),
@@ -498,7 +530,7 @@ const i18n = {
           id = memoryId--;
         }
 
-        const item: Item = { id, url: URL.createObjectURL(blob), ...rec };
+        const item: Item = { id, url: URL.createObjectURL(blob), ...rec, format: displayFormat(fname) };
         items.set(id, item);
         card.dataset.id = String(id);
         card.innerHTML = cardHTML(item);
@@ -526,7 +558,7 @@ const i18n = {
       const item: Item = {
         id: s.id, name: s.name, url: URL.createObjectURL(s.blob), blob: s.blob,
         width: s.width, height: s.height, origSize: s.origSize,
-        saved: s.saved, quality: s.quality, format: s.format,
+        saved: s.saved, quality: s.quality, format: displayFormat(s.name),
       };
       items.set(item.id, item);
       const card = document.createElement('figure');

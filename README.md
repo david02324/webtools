@@ -11,6 +11,7 @@ Browser-based image tools that run entirely on your device. **No uploads, no ins
 | **Image Analyzer** | `/analyze-image` | Inspect any image — filename, real format (detected from magic bytes), size, dimensions, megapixels, aspect ratio, PNG color/bit-depth, and full EXIF metadata (camera, lens, exposure, aperture, ISO, focal length, orientation, GPS). One click converts it. |
 | **Convert to WebP** | `/to-webp` | Convert JPG · PNG · GIF · AVIF and more to WebP, with a quality slider and batch support. |
 | **Convert to AVIF** | `/to-avif` | Same, targeting AVIF for high compression. |
+| **Image Compressor** | `/compress-image` | Compress JPG · PNG · WebP · AVIF while keeping the original format, using the same codecs as [Google Squoosh](https://squoosh.app/) — MozJPEG for JPEG, lossless OxiPNG for PNG. |
 
 From the analyzer, the **Convert to WebP / AVIF** buttons hand the image straight to the matching converter and convert it on arrival — no re-upload.
 
@@ -26,7 +27,7 @@ From the analyzer, the **Convert to WebP / AVIF** buttons hand the image straigh
 
 - [Astro](https://astro.build/) — static site generation, one prerendered HTML page per tool × locale.
 - TypeScript, Web Workers, IndexedDB, OffscreenCanvas / `createImageBitmap`.
-- `@jsquash/webp` and `@jsquash/avif` (WebAssembly codecs).
+- `@jsquash/webp`, `@jsquash/avif`, `@jsquash/jpeg` (MozJPEG) and `@jsquash/oxipng` (WebAssembly codecs from Squoosh).
 - Deployed to GitHub Pages.
 
 ## Development

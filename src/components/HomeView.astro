@@ -33,7 +33,10 @@ const sectionGroups: { title: string; cards: Card[] }[] = [
       },
       ...TOOL_LIST.map((tool) => ({
         href: localizedPath(base, locale, tool.slug),
-        title: t.home.cardTitle(tool.format.toUpperCase()),
+        title:
+          tool.format === 'compress'
+            ? t.home.compressCard
+            : t.home.cardTitle(tool.format.toUpperCase()),
         desc: TOOL_COPY[locale][tool.format].tagline,
       })),
     ],

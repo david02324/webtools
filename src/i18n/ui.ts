@@ -13,12 +13,16 @@ export interface UIStrings {
     cardTitle: (format: string) => string;
     /** 이미지 분석기 카드 제목 */
     analyzerCard: string;
+    /** 이미지 압축기 카드 제목 */
+    compressCard: string;
     /** 기능 섹션 제목 — 이미지 / 동영상 / 그 외 */
     sections: { image: string; video: string; other: string };
   };
   tool: {
     /** "{format} 변환기" */
     heading: (format: string) => string;
+    /** 이미지 압축기 페이지 제목(h1) */
+    compressHeading: string;
     featuresTitle: string;
     features: string[];
     note: string;
@@ -46,6 +50,10 @@ export interface UIStrings {
   converter: {
     dropText: string;
     dropSub: string;
+    /** 압축 도구용 드롭존 보조 설명(지원 포맷이 다름) */
+    dropSubCompress: string;
+    /** 압축 도구가 다룰 수 없는 입력 포맷 안내 */
+    unsupported: string;
     quality: string;
     converting: string;
     download: string;
@@ -137,10 +145,12 @@ export const UI: Record<Locale, UIStrings> = {
       lede: 'Image tools that run right in your browser. No uploads, no install, free.',
       cardTitle: (f) => `Convert to ${f}`,
       analyzerCard: 'Analyze an image',
+      compressCard: 'Compress an image',
       sections: { image: 'Image tools', video: 'Video tools', other: 'Other' },
     },
     tool: {
       heading: (f) => `${f} Converter`,
+      compressHeading: 'Image Compressor',
       featuresTitle: 'Features',
       features: [
         '<strong>No server uploads</strong> — every conversion runs inside your browser.',
@@ -187,6 +197,8 @@ export const UI: Record<Locale, UIStrings> = {
     converter: {
       dropText: 'Drag images here, or click to choose',
       dropSub: 'JPG · PNG · GIF · WebP · AVIF and more / multiple files at once',
+      dropSubCompress: 'JPG · PNG · WebP · AVIF — output keeps the original format / multiple files at once',
+      unsupported: 'This format can’t be compressed here. Supported: JPG, PNG, WebP, AVIF.',
       quality: 'Quality',
       converting: 'Converting…',
       download: 'Download',
@@ -254,10 +266,12 @@ export const UI: Record<Locale, UIStrings> = {
       lede: '브라우저에서 바로 쓰는 이미지 도구. 업로드 없음, 설치 없음, 무료.',
       cardTitle: (f) => `${f} 로 변환`,
       analyzerCard: '이미지 분석',
+      compressCard: '이미지 압축',
       sections: { image: '이미지 도구', video: '동영상 도구', other: '그 외' },
     },
     tool: {
       heading: (f) => `${f} 변환기`,
+      compressHeading: '이미지 압축기',
       featuresTitle: '특징',
       features: [
         '<strong>서버 업로드 없음</strong> — 모든 변환이 브라우저 안에서 실행됩니다.',
@@ -304,6 +318,8 @@ export const UI: Record<Locale, UIStrings> = {
     converter: {
       dropText: '이미지를 드래그하거나 클릭해 선택하세요',
       dropSub: 'JPG · PNG · GIF · WebP · AVIF 등 / 여러 장 동시 가능',
+      dropSubCompress: 'JPG · PNG · WebP · AVIF — 포맷 그대로 압축 / 여러 장 동시 가능',
+      unsupported: '이 포맷은 압축할 수 없습니다. 지원: JPG·PNG·WebP·AVIF.',
       quality: '품질',
       converting: '변환 중…',
       download: '다운로드',
@@ -371,10 +387,12 @@ export const UI: Record<Locale, UIStrings> = {
       lede: '在浏览器中即开即用的图片工具。无需上传，无需安装，完全免费。',
       cardTitle: (f) => `转换为 ${f}`,
       analyzerCard: '分析图片',
+      compressCard: '压缩图片',
       sections: { image: '图片工具', video: '视频工具', other: '其他' },
     },
     tool: {
       heading: (f) => `${f} 转换器`,
+      compressHeading: '图片压缩器',
       featuresTitle: '特点',
       features: [
         '<strong>无需上传服务器</strong> — 所有转换都在浏览器内完成。',
@@ -421,6 +439,8 @@ export const UI: Record<Locale, UIStrings> = {
     converter: {
       dropText: '拖入图片，或点击选择',
       dropSub: 'JPG · PNG · GIF · WebP · AVIF 等 / 支持一次多张',
+      dropSubCompress: 'JPG · PNG · WebP · AVIF — 保持原格式压缩 / 支持一次多张',
+      unsupported: '无法压缩此格式。支持：JPG、PNG、WebP、AVIF。',
       quality: '质量',
       converting: '转换中…',
       download: '下载',
@@ -488,10 +508,12 @@ export const UI: Record<Locale, UIStrings> = {
       lede: 'ブラウザですぐ使える画像ツール。アップロード不要、インストール不要、無料。',
       cardTitle: (f) => `${f} に変換`,
       analyzerCard: '画像を解析',
+      compressCard: '画像を圧縮',
       sections: { image: '画像ツール', video: '動画ツール', other: 'その他' },
     },
     tool: {
       heading: (f) => `${f} コンバーター`,
+      compressHeading: '画像圧縮ツール',
       featuresTitle: '特長',
       features: [
         '<strong>サーバーへのアップロードなし</strong> — すべての変換はブラウザ内で実行されます。',
@@ -538,6 +560,8 @@ export const UI: Record<Locale, UIStrings> = {
     converter: {
       dropText: '画像をドラッグするか、クリックして選択',
       dropSub: 'JPG · PNG · GIF · WebP · AVIF など / 複数同時に可',
+      dropSubCompress: 'JPG · PNG · WebP · AVIF — 形式そのままに圧縮 / 複数同時に可',
+      unsupported: 'この形式は圧縮できません。対応：JPG・PNG・WebP・AVIF。',
       quality: '品質',
       converting: '変換中…',
       download: 'ダウンロード',

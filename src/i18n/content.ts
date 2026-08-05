@@ -1,7 +1,7 @@
 // SEO 핵심 텍스트(페이지 title/description/tagline)를 로케일 × 포맷별로 정의한다.
 // 검색결과·링크 미리보기에 노출되므로 각 언어의 자연스러운 표현을 직접 작성했다.
 import type { Locale } from './config';
-import type { TargetFormat } from '../lib/formats';
+import type { ToolFormat } from '../lib/formats';
 
 export interface ToolCopy {
   /** <title> */
@@ -124,7 +124,7 @@ export const SLACK_EMOJI_COPY: Record<Locale, ToolCopy> = {
   },
 };
 
-export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
+export const TOOL_COPY: Record<Locale, Record<ToolFormat, ToolCopy>> = {
   en: {
     webp: {
       title: 'Convert Images to WebP — Free Online Converter | WebTools',
@@ -137,6 +137,12 @@ export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
       description:
         'Convert JPG, PNG, WebP and more to AVIF right in your browser. Processed on your device with no uploads — safe and highly compressed.',
       tagline: 'Any image to AVIF, right in your browser. No uploads, high compression.',
+    },
+    compress: {
+      title: 'Compress Images — Free Online Image Compressor | WebTools',
+      description:
+        'Compress JPG, PNG, WebP and AVIF images right in your browser using the same codecs as Google Squoosh (MozJPEG, OxiPNG). Keeps the original format, no uploads — safe and fast.',
+      tagline: 'Shrink JPG · PNG · WebP · AVIF while keeping the format. Squoosh codecs, no uploads.',
     },
   },
   ko: {
@@ -152,6 +158,12 @@ export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
         'JPG·PNG·WebP 등 어떤 이미지든 브라우저에서 바로 AVIF로 변환합니다. 서버 업로드 없이 기기 안에서 처리해 안전하고 고압축입니다.',
       tagline: '어떤 이미지든 브라우저에서 바로 AVIF로. 업로드 없음, 고압축.',
     },
+    compress: {
+      title: '이미지 압축 — 무료 온라인 이미지 압축기 | WebTools',
+      description:
+        'JPG·PNG·WebP·AVIF 이미지를 브라우저에서 바로 압축합니다. Google Squoosh 와 같은 코덱(MozJPEG·OxiPNG)으로 포맷은 그대로, 용량만 줄입니다. 업로드 없이 기기 안에서 처리해 안전하고 빠릅니다.',
+      tagline: 'JPG · PNG · WebP · AVIF 를 포맷 그대로 압축. Squoosh 코덱, 업로드 없음.',
+    },
   },
   zh: {
     webp: {
@@ -166,6 +178,12 @@ export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
         '在浏览器中直接将 JPG、PNG、WebP 等图片转换为 AVIF。在本地设备处理，无需上传，安全且高压缩。',
       tagline: '任意图片即刻转为 AVIF，全程在浏览器中。无需上传，高压缩率。',
     },
+    compress: {
+      title: '压缩图片 — 免费在线图片压缩工具 | WebTools',
+      description:
+        '在浏览器中直接压缩 JPG、PNG、WebP、AVIF 图片。采用与 Google Squoosh 相同的编解码器（MozJPEG、OxiPNG），保持原格式只减小体积。无需上传，在本地设备处理，安全又快速。',
+      tagline: '压缩 JPG · PNG · WebP · AVIF 而不改变格式。Squoosh 编解码器，无需上传。',
+    },
   },
   ja: {
     webp: {
@@ -179,6 +197,12 @@ export const TOOL_COPY: Record<Locale, Record<TargetFormat, ToolCopy>> = {
       description:
         'JPG・PNG・WebP などあらゆる画像をブラウザですぐ AVIF に変換。端末内で処理しアップロード不要、安全で高圧縮です。',
       tagline: 'あらゆる画像をブラウザですぐ AVIF に。アップロード不要、高圧縮。',
+    },
+    compress: {
+      title: '画像を圧縮 — 無料オンライン画像圧縮ツール | WebTools',
+      description:
+        'JPG・PNG・WebP・AVIF 画像をブラウザ内でそのまま圧縮。Google Squoosh と同じコーデック（MozJPEG・OxiPNG）で、形式を保ったまま容量だけを削減します。アップロード不要、端末内で処理し安全で高速です。',
+      tagline: 'JPG · PNG · WebP · AVIF を形式そのままに圧縮。Squoosh コーデック、アップロード不要。',
     },
   },
 };

@@ -4,20 +4,33 @@
 
 export type TargetFormat = 'webp' | 'avif';
 
+/**
+ * 도구 식별자 — 페이지·저장소 구분과 TOOL_COPY 키로 쓴다.
+ * 'compress' 는 입력 포맷을 유지한 채 압축만 하는 도구(출력 포맷이 파일마다 다름).
+ */
+export type ToolFormat = TargetFormat | 'compress';
+
+/**
+ * 워커가 처리할 수 있는 코덱. 변환기는 대상 포맷과 같고,
+ * 압축기는 입력 포맷에 따라 mozjpeg(JPEG)·oxipng(PNG)를 추가로 쓴다.
+ * 모두 Squoosh(jSquash)에서 가져온 WASM 코덱이다.
+ */
+export type WorkerFormat = TargetFormat | 'mozjpeg' | 'oxipng';
+
 export interface ToolConfig {
   /** URL 슬러그. /webtools/<slug> 로 매핑된다. */
   slug: string;
-  /** 출력 포맷 */
-  format: TargetFormat;
-  /** 출력 MIME */
+  /** 도구 식별자 */
+  format: ToolFormat;
+  /** 출력 MIME (compress 는 파일마다 달라 미사용) */
   mime: string;
-  /** 출력 확장자 */
+  /** 출력 확장자 (compress 는 파일마다 달라 미사용) */
   ext: string;
   /** 기본 품질 (0–100) */
   defaultQuality: number;
 }
 
-export const TOOLS: Record<TargetFormat, ToolConfig> = {
+export const TOOLS: Record<ToolFormat, ToolConfig> = {
   webp: {
     slug: 'to-webp',
     format: 'webp',
@@ -31,6 +44,13 @@ export const TOOLS: Record<TargetFormat, ToolConfig> = {
     mime: 'image/avif',
     ext: 'avif',
     defaultQuality: 50,
+  },
+  compress: {
+    slug: 'compress-image',
+    format: 'compress',
+    mime: '',
+    ext: '',
+    defaultQuality: 75,
   },
 };
 

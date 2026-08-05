@@ -1,12 +1,14 @@
 /// <reference lib="webworker" />
 import encodeWebp from '@jsquash/webp/encode';
 import encodeAvif from '@jsquash/avif/encode';
-import type { TargetFormat } from './formats';
+import encodeJpeg from '@jsquash/jpeg/encode';
+import optimisePng from '@jsquash/oxipng/optimise';
+import type { WorkerFormat } from './formats';
 
 export interface ConvertRequest {
   id: number;
   file: File;
-  format: TargetFormat;
+  format: WorkerFormat;
   quality: number;
 }
 
@@ -32,20 +34,37 @@ async function toImageData(file: File): Promise<ImageData> {
   return data;
 }
 
+// PNG(oxipng)는 무손실이라 원본 바이트를 그대로 최적화한다.
+// 크기 표시용 치수만 따로 디코드한다.
+async function optimisePngFile(file: File): Promise<{ buffer: ArrayBuffer; width: number; height: number }> {
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+  bitmap.close();
+  const buffer = await optimisePng(await file.arrayBuffer(), { level: 2 });
+  return { buffer, width, height };
+}
+
+async function encode(
+  file: File,
+  format: WorkerFormat,
+  quality: number,
+): Promise<{ buffer: ArrayBuffer; width: number; height: number }> {
+  if (format === 'oxipng') return optimisePngFile(file);
+  const imageData = await toImageData(file);
+  const buffer =
+    format === 'webp'
+      ? await encodeWebp(imageData, { quality })
+      : format === 'avif'
+        ? await encodeAvif(imageData, { quality })
+        : await encodeJpeg(imageData, { quality });
+  return { buffer, width: imageData.width, height: imageData.height };
+}
+
 self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
   const { id, file, format, quality } = e.data;
   try {
-    const imageData = await toImageData(file);
-    const buffer =
-      format === 'webp'
-        ? await encodeWebp(imageData, { quality })
-        : await encodeAvif(imageData, { quality });
-    const res: ConvertResponse = {
-      id,
-      buffer,
-      width: imageData.width,
-      height: imageData.height,
-    };
+    const { buffer, width, height } = await encode(file, format, quality);
+    const res: ConvertResponse = { id, buffer, width, height };
     self.postMessage(res, [buffer]);
   } catch (err) {
     const res: ConvertResponse = { id, error: err instanceof Error ? err.message : String(err) };

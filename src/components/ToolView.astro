@@ -11,6 +11,9 @@ interface Props { tool: ToolConfig; locale: Locale; }
 const { tool, locale } = Astro.props;
 const t = UI[locale];
 const copy = TOOL_COPY[locale][tool.format];
+// 변환기는 "{포맷} 변환기", 압축기는 전용 제목을 쓴다.
+const heading =
+  tool.format === 'compress' ? t.tool.compressHeading : t.tool.heading(tool.format.toUpperCase());
 const base = import.meta.env.BASE_URL;
 const url = new URL(`${base}${locale === 'en' ? '' : `${locale}/`}${tool.slug}`, Astro.site).href;
 
@@ -35,7 +38,7 @@ const jsonLd = {
   slug={tool.slug}
   jsonLd={jsonLd}
 >
-  <h1>{t.tool.heading(tool.format.toUpperCase())}</h1>
+  <h1>{heading}</h1>
   <p class="lede">{copy.tagline}</p>
 
   <ImageConverter tool={tool} locale={locale} />

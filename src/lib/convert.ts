@@ -1,6 +1,6 @@
 // 메인 스레드에서 워커를 감싸는 얇은 래퍼. Promise 로 변환을 노출한다.
 import type { ConvertRequest, ConvertResponse } from './convert.worker';
-import type { TargetFormat } from './formats';
+import type { WorkerFormat } from './formats';
 
 export interface ConvertResult {
   blob: Blob;
@@ -28,7 +28,7 @@ function getWorker(): Worker {
 
 export function convertImage(
   file: File,
-  format: TargetFormat,
+  format: WorkerFormat,
   quality: number,
   mime: string,
 ): Promise<ConvertResult> {
