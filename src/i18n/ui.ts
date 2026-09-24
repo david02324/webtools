@@ -153,7 +153,6 @@ export const UI: Record<Locale, UIStrings> = {
       compressHeading: 'Image Compressor',
       featuresTitle: 'Features',
       features: [
-        '<strong>No server uploads</strong> — every conversion runs inside your browser.',
         '<strong>Batch conversion</strong> — drop several files at once.',
         '<strong>Quality control</strong> — balance file size and clarity with a slider.',
       ],
@@ -274,7 +273,6 @@ export const UI: Record<Locale, UIStrings> = {
       compressHeading: '이미지 압축기',
       featuresTitle: '특징',
       features: [
-        '<strong>서버 업로드 없음</strong> — 모든 변환이 브라우저 안에서 실행됩니다.',
         '<strong>여러 장 동시 변환</strong> — 한 번에 여러 파일을 끌어다 놓으세요.',
         '<strong>품질 조절</strong> — 슬라이더로 용량과 화질의 균형을 맞춥니다.',
       ],
@@ -395,7 +393,6 @@ export const UI: Record<Locale, UIStrings> = {
       compressHeading: '图片压缩器',
       featuresTitle: '特点',
       features: [
-        '<strong>无需上传服务器</strong> — 所有转换都在浏览器内完成。',
         '<strong>批量转换</strong> — 可一次拖入多个文件。',
         '<strong>质量调节</strong> — 用滑块平衡文件大小与清晰度。',
       ],
@@ -516,7 +513,6 @@ export const UI: Record<Locale, UIStrings> = {
       compressHeading: '画像圧縮ツール',
       featuresTitle: '特長',
       features: [
-        '<strong>サーバーへのアップロードなし</strong> — すべての変換はブラウザ内で実行されます。',
         '<strong>複数まとめて変換</strong> — 一度に複数のファイルをドラッグできます。',
         '<strong>品質の調整</strong> — スライダーでファイルサイズと画質のバランスを取れます。',
       ],
